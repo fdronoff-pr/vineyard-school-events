@@ -1,0 +1,22 @@
+{
+  "name": "vineyard-school-events",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-26",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "itemswap.co.uk/events",
+      "zone_name": "itemswap.co.uk"
+    },
+    {
+      "pattern": "itemswap.co.uk/events/*",
+      "zone_name": "itemswap.co.uk"
+    }
+  ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  }
+}
