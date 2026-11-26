@@ -197,33 +197,33 @@
   // Dates are ISO calendar dates. Times are displayed in school-local time.
   // Event data comes from the supplied autumn list and Christmas calendar.
   const data = [
-    ['2026-09-11', 'Stay and play, ice cream van', '3:15-4:30pm'],
-    ['2026-10-01', 'Who's behind the mask inflatable run', '4:30-5:15pm'],
+    ['2026-09-11', 'Stay and play, ice cream van', '3:15–4:30pm'],
+    ['2026-10-01', 'Who’s behind the mask inflatable run', '4:30–5:15pm'],
     ['2026-10-16', 'Pyjama Day'],
-    ['2026-11-03', 'Firework Night at The Vineyard', '5-7pm'],
-    ['2026-11-13', 'Year 3 & 4 disco', '3:15-4:15pm'],
+    ['2026-11-03', 'Firework Night at The Vineyard', '5–7pm'],
+    ['2026-11-13', 'Year 3 & 4 disco', '3:15–4:15pm'],
     ['2026-11-20', 'Odd Socks Day'],
     ['2026-11-23', 'Winter Kindness Donations Open'],
-    ['2026-11-25', 'Year 2 disco', '3-4pm'],
-    ['2026-11-25', 'Year 5 disco', '4:15-5:15pm'],
+    ['2026-11-25', 'Year 2 disco', '3–4pm'],
+    ['2026-11-25', 'Year 5 disco', '4:15–5:15pm'],
     ['2026-11-26', 'Christmas Wreath-Making Masterclass', '7pm'],
-    ['2026-11-29', 'Christmas Trees & Puddings Collection', '10am-2pm'],
+    ['2026-11-29', 'Christmas Trees & Puddings Collection', '10am–2pm'],
     ['2026-11-30', 'Bring in labelled Santa hats'],
-    ['2026-12-02', 'Winter Kindness Workshop', '3:15-4:15pm'],
+    ['2026-12-02', 'Winter Kindness Workshop', '3:15–4:15pm'],
     ['2026-12-04', 'Christmas Shoeboxes & Thank You Biscuits Deadline', '9am'],
     ['2026-12-07', 'Silent Auction Starts'],
-    ['2026-12-08', 'Christmas Concert: Year 6 & Emerald Class', '9:30-10:30am'],
-    ['2026-12-08', 'Christmas Concert: Year 5 & Ruby Class', '11am-12pm'],
-    ['2026-12-08', 'Christmas Concert: Year 4 & Sapphire Class', '2-3pm'],
-    ['2026-12-09', 'KS1 Christmas Concert: Year 2 families', '9:30-10:30am'],
-    ['2026-12-10', 'KS1 Christmas Concert: Year 1 families', '2-3pm'],
-    ['2026-12-10', 'Christmas Community Evening', '6-8pm'],
-    ['2026-12-11', 'Opal Christmas Nativity', '9:30-10:30am'],
+    ['2026-12-08', 'Christmas Concert: Year 6 & Emerald Class', '9:30–10:30am'],
+    ['2026-12-08', 'Christmas Concert: Year 5 & Ruby Class', '11am–12pm'],
+    ['2026-12-08', 'Christmas Concert: Year 4 & Sapphire Class', '2–3pm'],
+    ['2026-12-09', 'KS1 Christmas Concert: Year 2 families', '9:30–10:30am'],
+    ['2026-12-10', 'KS1 Christmas Concert: Year 1 families', '2–3pm'],
+    ['2026-12-10', 'Christmas Community Evening', '6–8pm'],
+    ['2026-12-11', 'Opal Christmas Nativity', '9:30–10:30am'],
     ['2026-12-11', 'Gems Christmas Afternoon', '2:30pm'],
     ['2026-12-13', 'Christmas Collection Pot Deadline'],
     ['2026-12-14', 'Elfridges Donations Deadline', '', 'New and unused gifts'],
     ['2026-12-15', 'Silent Auction Closes'],
-    ['2026-12-17', 'Christmas Celebration Day', '', 'Santa visits Reception, KS1 and Gems. Elfridges for Years 3-5, Christmas lunch, Christmas jumpers and Year 6 elf dress-up.'],
+    ['2026-12-17', 'Christmas Celebration Day', '', 'Santa visits Reception, KS1 and Gems. Elfridges for Years 3–5, Christmas lunch, Christmas jumpers and Year 6 elf dress-up.'],
     ['2026-12-18', 'End of Term: Early Finish', '1:30pm']
   ];
   const eventsByMonth = new Map();
@@ -314,7 +314,7 @@
     const selectedEvents = monthEvents(year, month);
     const confirmed = selectedEvents.filter((event) => event.status === 'confirmed').length;
     title.textContent = monthName(month);
-    summary.textContent = confirmed + ' confirmed � ' + (selectedEvents.length - confirmed) + ' planned';
+    summary.textContent = confirmed + ' confirmed · ' + (selectedEvents.length - confirmed) + ' planned';
     if (!selectedEvents.length) {
       eventsPanel.replaceChildren(element('p', 'empty', 'No events listed for ' + monthName(month) + ' ' + year + '.'));
       return;
