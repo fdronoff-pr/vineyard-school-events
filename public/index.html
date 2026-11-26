@@ -29,10 +29,16 @@
   .crest-leaf { position: absolute; inset: 0; width: 100%; height: 100%; }
   .school-name { font: bold 17px/1.19 var(--serif); letter-spacing: .235em; }
   .hero {
-    background-color: #dff1fb;
-    background-image: linear-gradient(#7faed329 1px, transparent 1px),
-      linear-gradient(90deg, #7faed329 1px, transparent 1px), linear-gradient(115deg, #e9f5fc, #d5eefc);
-    background-size: 26px 26px, 26px 26px, 100% 100%;
+    background-color: #e4f2fb;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.11' filter='url(%23grain)'/%3E%3C/svg%3E"),
+      linear-gradient(#82add516 1px, transparent 1px),
+      linear-gradient(90deg, #82add516 1px, transparent 1px),
+      radial-gradient(ellipse at 30% 35%, #f4faffb3, transparent 63%),
+      radial-gradient(ellipse at 85% 75%, #d2eafa91, transparent 59%),
+      linear-gradient(112deg, #e5f3fc, #eaf5fc 54%, #deeffb);
+    background-size: 160px 160px, 26px 26px, 26px 26px, auto, auto, auto;
+    background-position: 0 0, 8px 0, 8px 0, 0 0, 0 0, 0 0;
   }
   .hero-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) clamp(145px, 25vw, 255px); align-items: center; gap: 20px; min-height: 296px; padding-block: 34px 20px; }
   .eyebrow, .intro { font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
