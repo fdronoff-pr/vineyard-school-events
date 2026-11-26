@@ -61,8 +61,7 @@
   .hero-art { width: 100%; align-self: end; margin-bottom: -3px; }
   .layout { display: grid; grid-template-columns: minmax(200px, 29fr) minmax(0, 71fr); align-items: start; gap: 15px; padding-block: 33px 58px; }
   .months { display: grid; gap: 12px; }
-  .summer-months { margin-top: 16px; }
-  .summer-title { margin: 0 0 8px; color: var(--muted); font-size: 14px; font-weight: 700; }
+  .month-scroll-hint { margin: 2px 5px 0; color: var(--muted); font-size: 12px; font-weight: 700; }
   .month { width: 100%; min-height: 73px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px clamp(13px, 2vw, 20px); text-align: left; border-radius: 14px; border: 1px solid var(--rule); background: var(--week); }
   .month-name { font: bold clamp(20px, 2.65vw, 28px)/1.1 var(--serif); }
   .month-count { white-space: nowrap; }
@@ -88,7 +87,15 @@
     .eyebrow { font-size: 13px; }
     .filters { margin-top: 25px; }
     .layout { grid-template-columns: minmax(0, 1fr); padding-top: 18px; }
-    .months { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+    .months {
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(110px, 1fr);
+      gap: 8px;
+      overflow-x: auto;
+      padding: 5px;
+      scrollbar-width: thin;
+      scrollbar-color: #6187b1 transparent;
+    }
     .month { flex-direction: column; justify-content: center; align-items: start; min-height: 57px; padding: 7px; gap: 3px; border-radius: 9px; }
     .month-name { font-size: clamp(13px, 2.7vw, 20px); }
     .month-count { font-size: 12px; }
@@ -183,10 +190,7 @@
   <div class="wrap layout">
     <div>
       <nav id="months" class="months" aria-label="Term months"></nav>
-      <nav id="summer" class="summer-months" aria-labelledby="summer-title" hidden>
-        <p id="summer-title" class="summer-title">Summer months</p>
-        <div id="summer-months" class="months"></div>
-      </nav>
+      <p id="month-scroll-hint" class="month-scroll-hint" hidden>Scroll for more months <span aria-hidden="true">&harr;</span></p>
     </div>
     <section class="agenda" aria-labelledby="month-title">
       <div class="agenda-header" aria-live="polite" aria-atomic="true">
@@ -242,8 +246,7 @@
 
   const yearPicker = document.querySelector('#year');
   const monthNav = document.querySelector('#months');
-  const summerNav = document.querySelector('#summer');
-  const summerMonths = document.querySelector('#summer-months');
+  const monthScrollHint = document.querySelector('#month-scroll-hint');
   const title = document.querySelector('#month-title');
   const summary = document.querySelector('#summary');
   const eventsPanel = document.querySelector('#events');
@@ -274,7 +277,11 @@
     const match = /^#(202[5-7])-(0[1-9]|1[0-2])$/.exec(location.hash);
     year = match ? Number(match[1]) : 2026;
     month = match ? Number(match[2]) : 11;
-    if (month !== 7 && month !== 8) lastMonth[termViewOf(month)] = month;
+    if (month === 7 || month === 8) {
+      month = 6;
+      history.replaceState(null, '', '#' + monthKey(year, month));
+    }
+    lastMonth[termViewOf(month)] = month;
   }
 
   function selectMonth(nextYear, nextMonth) {
@@ -282,13 +289,13 @@
     const rebuildNav = nextYear !== year || termViewOf(nextMonth) !== termViewOf(month);
     year = nextYear;
     month = nextMonth;
-    if (month !== 7 && month !== 8) lastMonth[termViewOf(month)] = month;
+    lastMonth[termViewOf(month)] = month;
     history.pushState(null, '', '#' + monthKey(year, month));
     render(rebuildNav);
   }
 
-  function renderMonthButtons(container, months) {
-    container.replaceChildren(...months.map((number) => {
+  function renderMonthButtons(months) {
+    monthNav.replaceChildren(...months.map((number) => {
       const button = element('button', 'month');
       const count = monthEvents(year, number).length;
       button.type = 'button';
@@ -348,24 +355,28 @@
     eventsPanel.replaceChildren(weeks);
   }
 
+  function updateScrollHint() {
+    const overflows = monthNav.scrollWidth > monthNav.clientWidth;
+    monthScrollHint.hidden = !overflows;
+    if (overflows) monthNav.setAttribute('aria-describedby', monthScrollHint.id);
+    else monthNav.removeAttribute('aria-describedby');
+  }
+
   function render(rebuildNav = true) {
     yearPicker.value = year;
     for (const button of termButtons) {
       button.setAttribute('aria-pressed', String(Number(button.dataset.term) === termViewOf(month)));
     }
-    if (rebuildNav) {
-      const term = termViewOf(month);
-      renderMonthButtons(monthNav, termMonths[term]);
-      summerNav.hidden = term !== 1;
-      renderMonthButtons(summerMonths, summerNav.hidden ? [] : [7, 8]);
-    }
-    for (const button of document.querySelectorAll('button[data-month]')) {
+    if (rebuildNav) renderMonthButtons(termMonths[termViewOf(month)]);
+    for (const button of monthNav.querySelectorAll('button')) {
       if (Number(button.dataset.month) === month) button.setAttribute('aria-current', 'date');
       else button.removeAttribute('aria-current');
     }
     renderAgenda();
+    updateScrollHint();
   }
 
+  new ResizeObserver(updateScrollHint).observe(monthNav);
   yearPicker.addEventListener('pointerdown', () => yearPicker.setAttribute('data-pointer-focus', ''));
   yearPicker.addEventListener('blur', () => yearPicker.removeAttribute('data-pointer-focus'));
   yearPicker.addEventListener('keydown', () => yearPicker.removeAttribute('data-pointer-focus'));
