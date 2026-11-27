@@ -170,11 +170,90 @@ async function logout(request, url) {
   return new Response(null, { status: 204, headers });
 }
 
+const photosTable = "vineyard_event_photos";
+const photoLimit = 1572864;
+
+async function eventDetails(id) {
+  const [event] = await database(eventQuery + "&id=eq." + id);
+  if (!event) throw new RequestError(404, "This event is no longer on the calendar.");
+  const photos = await allRows(photosTable + "?select=id&event_id=eq." + id + "&order=created_at,id");
+  return json({ event, photos });
+}
+
+async function servePhoto(id, method) {
+  const [photo] = await database(photosTable + "?select=content_base64&id=eq." + id);
+  if (!photo) throw new RequestError(404, "Photo not found.");
+  const bytes = method === "HEAD" ? null : Uint8Array.from(atob(photo.content_base64), char => char.charCodeAt(0));
+  return new Response(bytes, { headers: {
+    "Content-Type": "image/jpeg",
+    "X-Content-Type-Options": "nosniff",
+    "Cache-Control": "no-cache",
+  } });
+}
+
+async function readPhoto(request) {
+  if (request.headers.get("Content-Type") !== "image/jpeg" || !request.body) {
+    throw new RequestError(415, "Choose a supported photo.");
+  }
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > photoLimit) {
+      await reader.cancel();
+      throw new RequestError(413, "This photo is too large.");
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  if (size < 5 || bytes[0] !== 255 || bytes[1] !== 216 || bytes[2] !== 255 ||
+      bytes[size - 2] !== 255 || bytes[size - 1] !== 217) {
+    throw new RequestError(400, "This photo is not a valid JPEG.");
+  }
+
+  let binary = "";
+  for (let start = 0; start < size; start += 8192) {
+    binary += String.fromCharCode(...bytes.subarray(start, start + 8192));
+  }
+  return btoa(binary);
+}
+
+async function managePhoto(request, url, eventId, photoId) {
+  if (request.headers.get("Origin") !== url.origin) throw new RequestError(403, "Invalid request origin.");
+  const token = await adminToken(request);
+  if (!token) throw new RequestError(403, "Sign in with the authorised administrator account.");
+  if (request.method === "POST" && !photoId) {
+    const content = await readPhoto(request);
+    await database(photosTable, { token, method: "POST", body: JSON.stringify({ event_id: eventId, content_base64: content }) });
+    return json({ success: true }, 201);
+  }
+  if (request.method === "DELETE" && photoId) {
+    await database(photosTable + "?event_id=eq." + eventId + "&id=eq." + photoId, { token, method: "DELETE" });
+    return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+  }
+  throw new RequestError(405, "Method not allowed.");
+}
+
 async function api(request, url, path) {
   const method = request.method;
   if (path === "/api/session" && method === "GET") return json({ signedIn: Boolean(await adminToken(request)) });
   if (path === "/api/logout" && method === "POST") return logout(request, url);
   if (path === "/api/events" && method === "GET") return json(await allRows(eventQuery));
+  const event = /^\/api\/events\/([^/]+)$/.exec(path);
+  if (method === "GET" && event && uuidFormat.test(event[1])) return eventDetails(event[1]);
+  const photo = /^\/api\/admin\/events\/([^/]+)\/photos(?:\/([^/]+))?$/.exec(path);
+  if (photo && uuidFormat.test(photo[1]) && (!photo[2] || uuidFormat.test(photo[2]))) {
+    return managePhoto(request, url, photo[1], photo[2]);
+  }
   if (path === "/api/suggestions" && method === "POST") {
     const details = formDetails(await jsonBody(request, url), false);
     await database(suggestionsTable, { method, body: JSON.stringify(details) });
@@ -216,11 +295,17 @@ export default {
     const url = new URL(request.url);
     if (url.pathname !== "/events" && !url.pathname.startsWith("/events/")) return new Response("Not found", { status: 404 });
     const path = url.pathname.slice("/events".length).replace(/\/$/, "");
-    const adminPage = path === "/admin" || path === "/admin/add";
+    const publicEvent = /^\/view\/([^/]+)$/.exec(path);
+    const photoEditor = /^\/admin\/photos\/([^/]+)$/.exec(path);
+    const photo = /^\/photos\/([^/]+)$/.exec(path);
+    const adminPage = path === "/admin" || path === "/admin/add" || Boolean(photoEditor && uuidFormat.test(photoEditor[1]));
     try {
       if (path.startsWith("/api/")) return await api(request, url, path);
-      if (!["", "/suggest", "/login", "/admin", "/admin/add", "/hero-background.jpg"].includes(path)) return new Response("Not found", { status: 404 });
+      const photoRequest = photo && uuidFormat.test(photo[1]);
+      if (!adminPage && !photoRequest && !(publicEvent && uuidFormat.test(publicEvent[1])) &&
+          !["", "/suggest", "/login", "/hero-background.jpg"].includes(path)) return new Response("Not found", { status: 404 });
       if (!["GET", "HEAD"].includes(request.method)) return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
+      if (photoRequest) return await servePhoto(photo[1], request.method);
       if (adminPage && !await adminToken(request)) return redirect(url, "/events/login?access=denied");
       if (path === "/login" && !url.searchParams.has("access") && await adminToken(request)) return redirect(url, "/events/admin");
       url.pathname = path === "/hero-background.jpg" ? path : "/";

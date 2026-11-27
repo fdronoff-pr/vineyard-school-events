@@ -170,6 +170,18 @@
   .feedback[data-error] { color: #8b2535; }
   .event-description { white-space: pre-wrap; overflow-wrap: anywhere; }
   .event-name { overflow-wrap: anywhere; }
+  .event { position: relative; }
+  .event-link { color: inherit; text-decoration: none; }
+  .event-link::after { content: ""; position: absolute; inset: 0; }
+  .event:hover .event-link, .event-link:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+  #title { overflow-wrap: anywhere; }
+  .detail-meta { color: var(--muted); margin: 0 0 16px; }
+  .photo-gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 225px), 1fr)); gap: 14px; max-width: 1050px; }
+  .photo-gallery figure { min-width: 0; margin: 0; }
+  .photo-gallery img { display: block; width: 100%; max-height: 420px; object-fit: contain; background: #eef5fb; border-radius: 10px; }
+  .photo-gallery figcaption { margin-top: 6px; }
+  .event-back { display: inline-block; margin-bottom: 14px; color: var(--blue); }
+
   @media (max-width: 475px) {
     .brand-actions { gap: 5px; }
     .brand-actions .action { padding: 6px 8px; font-size: 12px; }
@@ -271,6 +283,30 @@
       <noscript><p class="empty">Enable JavaScript to browse the event calendar.</p></noscript>
     </section>
   </div>
+  <section class="wrap workspace" id="view-page" aria-labelledby="title" hidden>
+    <a href="/events" class="event-back" id="back-to-events">← Back to events</a>
+    <article class="section-card">
+      <p id="detail-feedback" class="feedback" role="status"></p>
+      <p class="detail-meta" id="detail-meta" hidden></p>
+      <p class="event-description" id="detail-description" hidden></p>
+      <section id="detail-photos" aria-labelledby="event-photos-title" hidden>
+        <h2 id="event-photos-title">Photos</h2>
+        <div id="event-photo-gallery" class="photo-gallery"></div>
+      </section>
+    </article>
+  </section>
+  <section class="wrap workspace" id="photos-page" aria-labelledby="title" hidden>
+    <a href="/events/admin" class="event-back">← Back to Event console</a>
+    <section class="section-card">
+      <h2 id="photo-event-name"></h2>
+      <form id="photo-form" class="fields" hidden>
+        <label>Choose photos <input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple required></label>
+        <div class="form-actions"><button type="submit" class="action">Upload photos</button></div>
+      </form>
+      <p id="photo-feedback" class="feedback" role="status"></p>
+      <div id="admin-photo-gallery" class="photo-gallery"></div>
+    </section>
+  </section>
   <section class="wrap workspace" id="suggest-page" hidden>
     <form id="suggest-form" class="section-card editor fields">
       <label>Suggester name (optional) <input name="suggester_name" autocomplete="name" maxlength="120"></label>
@@ -350,10 +386,14 @@
   const termViewOf = (month) => month >= 9 ? 2 : 1;
   setupHeader();
   const path = location.pathname.replace(/\/$/, "");
-  const mode = { "/events/suggest": "suggest", "/events/login": "login", "/events/admin": "admin", "/events/admin/add": "add" }[path];
+  const detailRoute = /^\/events\/view\/([a-f\d-]+)$/i.exec(path);
+  const photosRoute = /^\/events\/admin\/photos\/([a-f\d-]+)$/i.exec(path);
+  const mode = detailRoute ? "view" : photosRoute ? "photos" :
+    { "/events/suggest": "suggest", "/events/login": "login", "/events/admin": "admin", "/events/admin/add": "add" }[path];
   if (mode) {
     const heading = {
       suggest: "Suggest an event", login: "Admin login", admin: "Manage events",
+      view: "Event details", photos: "Manage event photos",
       add: new URLSearchParams(location.search).has("suggestion") ? "Create event from suggestion" : "Add an event",
     }[mode];
     document.title = heading + " | Vineyard School Events";
@@ -362,7 +402,9 @@
     document.querySelector(".filters").hidden = true;
     document.querySelector("#calendar-page").hidden = true;
     document.querySelector("#" + mode + "-page").hidden = false;
-    setupWorkspace(mode);
+    if (detailRoute) void showEventDetails(detailRoute[1]);
+    else if (photosRoute) manageEventPhotos(photosRoute[1]);
+    else setupWorkspace(mode);
   } else {
     setupCalendar();
   }
@@ -370,7 +412,7 @@
   async function eventsApi(path, options = {}) {
     const response = await fetch("/events/api/" + path, {
       ...options,
-      ...(options.body ? { headers: { "Content-Type": "application/json" } } : {}),
+      ...(options.body && !options.headers ? { headers: { "Content-Type": "application/json" } } : {}),
     });
     if (response.status === 204) return null;
     const data = await response.json();
@@ -478,7 +520,10 @@
       badge.setAttribute('aria-label', fullDateFormatter.format(date));
       badge.append(element('span', 'weekday', weekdayFormatter.format(date)), element('span', 'day', date.getUTCDate()));
       const details = element('div');
-      const name = element('div', 'event-name', event.name);
+      const name = element('div', 'event-name');
+      const link = element('a', 'event-link', event.name);
+      link.href = '/events/view/' + encodeURIComponent(event.id);
+      name.append(link);
       if (event.status === 'planned') name.append(element('span', 'status', 'Planned'));
       details.append(name);
       if (event.time) details.append(element('div', 'event-time', event.time));
@@ -580,12 +625,144 @@
         const key = record.event_date.slice(0, 7);
         if (!eventsByMonth.has(key)) eventsByMonth.set(key, []);
         eventsByMonth.get(key).push({
-          date: record.event_date, name: record.name, time: record.event_time,
+          id: record.id, date: record.event_date, name: record.name, time: record.event_time,
           note: record.description, groups: record.year_groups, status: record.status,
         });
       }
       render();
     }).catch(error => eventsPanel.replaceChildren(element("p", "empty", error.message)));
+  }
+
+  const eventDetailDate = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeZone: "UTC" });
+
+  function makePhoto(photo, eventName, index) {
+    const image = document.createElement("img");
+    image.src = "/events/photos/" + encodeURIComponent(photo.id);
+    image.alt = "Photo " + (index + 1) + " for " + eventName;
+    image.loading = "lazy";
+    const figure = document.createElement("figure");
+    figure.append(image);
+    return figure;
+  }
+
+  async function showEventDetails(eventId) {
+    const status = document.querySelector("#detail-feedback");
+    feedback(status, "Loading event…");
+    try {
+      const { event, photos } = await eventsApi("events/" + eventId);
+      document.querySelector("#title").textContent = event.name;
+      document.title = event.name + " | Vineyard School Events";
+      document.querySelector("#back-to-events").href = "/events#" + event.event_date.slice(0, 7);
+      const details = document.querySelector("#detail-meta");
+      details.textContent = [
+        eventDetailDate.format(new Date(event.event_date + "T00:00:00Z")),
+        event.event_time,
+        groupLabel(event.year_groups),
+        event.status === "planned" ? "Planned" : "Confirmed",
+      ].filter(Boolean).join(" · ");
+      details.hidden = false;
+      const description = document.querySelector("#detail-description");
+      description.hidden = !event.description;
+      description.textContent = event.description;
+      document.querySelector("#detail-photos").hidden = !photos.length;
+      document.querySelector("#event-photo-gallery").replaceChildren(...photos.map((photo, index) => makePhoto(photo, event.name, index)));
+      feedback(status, "");
+    } catch (error) {
+      feedback(status, error.message, true);
+    }
+  }
+
+  async function jpegForUpload(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext("2d", { alpha: false });
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const jpeg = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .82));
+      if (!jpeg) throw new Error("This photo could not be converted.");
+      return jpeg;
+    } catch {
+      throw new Error("This photo could not be opened.");
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  function manageEventPhotos(eventId) {
+    const form = document.querySelector("#photo-form");
+    const status = document.querySelector("#photo-feedback");
+    const gallery = document.querySelector("#admin-photo-gallery");
+    const submit = form.querySelector('[type="submit"]');
+    const endpoint = "admin/events/" + eventId + "/photos";
+
+    async function refresh() {
+      const { event, photos } = await eventsApi("events/" + eventId);
+      document.querySelector("#photo-event-name").textContent = event.name;
+      gallery.replaceChildren(...photos.map((photo, index) => {
+        const figure = makePhoto(photo, event.name, index);
+        const caption = document.createElement("figcaption");
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "action action-danger";
+        remove.textContent = "Remove photo";
+        remove.setAttribute("aria-label", "Remove photo " + (index + 1));
+        remove.addEventListener("click", async () => {
+          if (!window.confirm("Remove this photo?")) return;
+          remove.disabled = true;
+          try {
+            await eventsApi(endpoint + "/" + encodeURIComponent(photo.id), { method: "DELETE" });
+            await refresh();
+            feedback(status, "Photo removed.");
+          } catch (error) {
+            feedback(status, error.message, true);
+            remove.disabled = false;
+          }
+        });
+        caption.append(remove);
+        figure.append(caption);
+        return figure;
+      }));
+      form.hidden = false;
+    }
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const files = [...form.elements.photos.files];
+      const errors = [];
+      let uploaded = 0;
+      submit.disabled = true;
+      feedback(status, "Uploading photos…");
+      for (const file of files) {
+        try {
+          const body = await jpegForUpload(file);
+          await eventsApi(endpoint, { method: "POST", body, headers: { "Content-Type": "image/jpeg" } });
+          uploaded++;
+        } catch (error) {
+          errors.push(file.name + " (" + error.message + ")");
+        }
+      }
+      form.reset();
+      try {
+        await refresh();
+        const message = uploaded ? uploaded + (uploaded === 1 ? " photo uploaded." : " photos uploaded.") : "";
+        feedback(status, errors.length ? [message, "Could not upload: " + errors.join("; ")].filter(Boolean).join(" ") : message, Boolean(errors.length));
+      } catch (error) {
+        feedback(status, error.message, true);
+      } finally {
+        submit.disabled = false;
+      }
+    });
+
+    feedback(status, "Loading photos…");
+    refresh().then(() => feedback(status, "")).catch(error => feedback(status, error.message, true));
   }
 
   function groupLabel(groups) {
@@ -768,6 +945,12 @@
         create.textContent = "Create event";
         create.href = "/events/admin/add?suggestion=" + encodeURIComponent(record.id);
         actions.append(create);
+      } else {
+        const photos = document.createElement("a");
+        photos.className = "action action-secondary";
+        photos.href = "/events/admin/photos/" + encodeURIComponent(record.id);
+        photos.textContent = "Manage photos";
+        actions.append(photos);
       }
       const remove = document.createElement("button");
       remove.type = "button";
