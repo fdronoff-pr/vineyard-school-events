@@ -47,13 +47,16 @@
   .underlined::after { content: ""; position: absolute; left: 0; right: 0; bottom: -.11em; height: .1em; border-radius: 60% 35% 55% 30%; background: #ffcb18; transform: rotate(-1.6deg); }
   .intro { margin: 23px 0 0; color: var(--muted); font-size: 14px; }
   .filters { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 4px; align-items: center; width: max(200px, calc((100cqw - var(--calendar-gap)) * .29)); margin-top: 46px; }
-  .term-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-  .term-arrow { display: grid; place-items: center; height: 45px; padding: 0; border: 1px solid var(--blue); border-radius: 9px; background: #fafdff; color: var(--blue); font: bold 20px/1 system-ui, sans-serif; cursor: pointer; }
-  .term-arrow:hover:enabled { background: #dbeaf6; }
+  .term-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+  .term-arrow { display: grid; place-items: center; height: 45px; padding: 0; border: 0; background: transparent; color: var(--blue); cursor: pointer; }
+  .term-arrow::before { content: ""; width: 12px; height: 12px; border-block-start: 3px solid currentColor; border-inline-end: 3px solid currentColor; border-radius: 1px; transform: rotate(45deg); }
+  #previous-term::before { transform: rotate(-135deg); }
+  .term-arrow:hover:enabled { color: var(--ink); }
   .term-arrow:disabled { opacity: .45; cursor: default; }
-  .term-controls .year-picker { padding-left: 8px; gap: 2px; font-size: 14px; }
-  .term-controls .year-picker select { min-width: 60px; padding-inline: 3px; }
-  .term-controls .terms button { min-width: 0; padding-inline: 7px; font-size: 14px; white-space: nowrap; }
+  .term-controls .year-picker { flex: 1 1 108px; padding-inline-start: 10px; gap: 5px; font-size: 14px; }
+  .term-controls .year-picker select { flex: 1; min-width: 0; padding-inline: 5px; }
+  .term-controls .terms { flex: 2 1 146px; }
+  .term-controls .terms button { flex: 1; min-width: 0; padding-inline: 7px; font-size: 14px; white-space: nowrap; }
   .year-picker, .terms { display: inline-flex; min-height: 45px; border: 1px solid var(--blue); border-radius: 11px; background: #fafdff; font-weight: bold; }
   .year-picker { align-items: center; padding-left: 15px; gap: 5px; }
   .year-picker select { align-self: stretch; min-width: 82px; border: 0; background: transparent; border-radius: 9px; padding: 0 7px; }
@@ -210,7 +213,7 @@
         <h1 id="title">Vineyard School <span class="underlined">Events</span></h1>
         <p class="intro">A little planning. A lot to look forward to.</p>
         <div class="filters">
-          <button type="button" class="term-arrow" id="previous-term" aria-label="Previous term">&larr;</button>
+          <button type="button" class="term-arrow" id="previous-term" aria-label="Previous term"></button>
           <div class="term-controls">
             <label class="year-picker">Year <select id="year">
               <option>2025</option><option selected>2026</option><option>2027</option>
@@ -220,7 +223,7 @@
               <button type="button" data-term="2" aria-pressed="true" aria-label="Term 2, September to December">Term 2</button>
             </div>
           </div>
-          <button type="button" class="term-arrow" id="next-term" aria-label="Next term">&rarr;</button>
+          <button type="button" class="term-arrow" id="next-term" aria-label="Next term"></button>
         </div>
       </div>
       <svg class="hero-art" viewBox="0 0 270 245" aria-hidden="true">
