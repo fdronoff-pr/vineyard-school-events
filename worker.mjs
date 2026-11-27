@@ -1,7 +1,8 @@
 export default {
   fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname !== "/events" && url.pathname !== "/events/") {
+    const isHeroImage = url.pathname === "/events/hero-background.jpg";
+    if (!isHeroImage && url.pathname !== "/events" && url.pathname !== "/events/") {
       return new Response("Not found", { status: 404 });
     }
 
@@ -12,7 +13,7 @@ export default {
       });
     }
 
-    url.pathname = "/";
+    url.pathname = isHeroImage ? "/hero-background.jpg" : "/";
     url.search = "";
     return env.ASSETS.fetch(new Request(url, request));
   },

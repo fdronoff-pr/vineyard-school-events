@@ -30,18 +30,10 @@
   .crest-leaf { position: absolute; inset: 0; width: 100%; height: 100%; }
   .school-name { font: bold 17px/1.19 var(--serif); letter-spacing: .235em; }
   .hero {
-    background-color: #e4f2fb;
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.11' filter='url(%23grain)'/%3E%3C/svg%3E"),
-      linear-gradient(#82add516 1px, transparent 1px),
-      linear-gradient(90deg, #82add516 1px, transparent 1px),
-      radial-gradient(ellipse at 30% 35%, #f4faffb3, transparent 63%),
-      radial-gradient(ellipse at 85% 75%, #d2eafa91, transparent 59%),
-      linear-gradient(112deg, #e5f3fc, #eaf5fc 54%, #deeffb);
-    background-size: 160px 160px, 26px 26px, 26px 26px, auto, auto, auto;
-    background-position: 0 0, 8px 0, 8px 0, 0 0, 0 0, 0 0;
+    background: #e7f2fc url("/events/hero-background.jpg") center / cover no-repeat;
   }
-  .hero-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) clamp(145px, 25vw, 255px); align-items: center; gap: 20px; min-height: 296px; padding-block: 34px 20px; }
+  .hero-layout { display: flex; align-items: center; min-height: 296px; padding-block: 34px 20px; }
+  .hero-copy { width: 48%; }
   .eyebrow, .intro { font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
   .eyebrow { margin: 0 0 18px; color: var(--blue); font-size: 16px; }
   h1 { margin: 0; font: bold clamp(36px, 5.8vw, 62px)/1.05 var(--serif); letter-spacing: -.035em; }
@@ -58,7 +50,6 @@
   .terms button + button { border-left: 1px solid var(--blue); }
   .terms button[aria-pressed="true"], .month[aria-current="date"] { background: var(--blue); color: white; border-color: var(--blue); }
   .terms button:hover:not([aria-pressed="true"]), .month:hover:not([aria-current]) { background: #dbeaf6; }
-  .hero-art { width: 100%; align-self: end; margin-bottom: -3px; }
   .layout { display: grid; grid-template-columns: minmax(200px, 29fr) minmax(0, 71fr); align-items: start; gap: 15px; padding-block: 33px 58px; }
   .months { display: grid; gap: 12px; }
   .month-scroll-hint { margin: 2px 5px 0; color: var(--muted); font-size: 12px; font-weight: 700; }
@@ -83,7 +74,7 @@
   .status { margin-inline-start: 8px; font-size: .8rem; font-weight: 700; color: #654410; background: #fff0cc; border-radius: 8px; padding: 2px 6px; }
   .empty { padding: 24px 30px 34px; margin: 0; color: var(--muted); }
   @media (max-width: 735px) {
-    .hero-layout { grid-template-columns: minmax(0, 1fr) 150px; min-height: 235px; }
+    .hero-layout { min-height: 235px; }
     .eyebrow { font-size: 13px; }
     .filters { margin-top: 25px; }
     .layout { grid-template-columns: minmax(0, 1fr); padding-top: 18px; }
@@ -110,8 +101,9 @@
     .lockup { min-height: 73px; gap: 10px; }
     .crest { width: 64px; height: 55px; font-size: 30px; }
     .school-name { font-size: 14px; }
+    .hero { background-position: left center; background-size: auto max(100%, 340px); }
     .hero-layout { display: block; min-height: auto; padding-block: 24px 20px; }
-    .hero-art { display: none; }
+    .hero-copy { width: 100%; }
     .intro { font-size: 12px; }
   }
   @media (forced-colors: active) {
@@ -141,7 +133,7 @@
 <main>
   <section class="hero" aria-labelledby="title">
     <div class="wrap hero-layout">
-      <div>
+      <div class="hero-copy">
         <p class="eyebrow">School community / Events calendar</p>
         <h1 id="title">Vineyard School <span class="underlined">Events</span></h1>
         <p class="intro">A little planning. A lot to look forward to.</p>
@@ -155,36 +147,6 @@
           </div>
         </div>
       </div>
-      <svg class="hero-art" viewBox="0 0 270 245" aria-hidden="true">
-        <defs>
-          <pattern id="pencil-grain" width="8" height="7" patternUnits="userSpaceOnUse">
-            <path d="m0 6 8-5M2 8l6-4" stroke="#fff" stroke-width="1" opacity=".24"/>
-          </pattern>
-          <g id="square"><rect width="25" height="21" rx="4" fill="#d7e9f8"/><rect width="25" height="21" rx="4" fill="url(#pencil-grain)"/></g>
-          <path id="ring" d="M0 11C-6 3-3-14 4-17S15-10 14-2" fill="none"/>
-        </defs>
-        <ellipse cx="133" cy="209" rx="114" ry="9" fill="#8dbce0" opacity=".46"/>
-        <path d="m225 42 22 149q2 16-13 17H43z" fill="#e3dccd" stroke="#193767" stroke-width="2"/>
-        <g transform="translate(48 39) skewX(-9)">
-          <rect width="173" height="164" rx="15" fill="#fffbef" stroke="#102957" stroke-width="3"/>
-          <path d="M15 0h143q15 0 15 15v27H0V15Q0 0 15 0Z" fill="#2364be" stroke="#102957" stroke-width="2"/>
-          <path d="M15 1h143q14 0 14 14v26H1V15Q1 1 15 1Z" fill="url(#pencil-grain)"/>
-          <g stroke-linecap="round">
-            <g stroke="#102957" stroke-width="7"><use href="#ring" x="44" y="5"/><use href="#ring" x="91" y="5"/><use href="#ring" x="138" y="5"/></g>
-            <g stroke="#fffbef" stroke-width="3"><use href="#ring" x="44" y="5"/><use href="#ring" x="91" y="5"/><use href="#ring" x="138" y="5"/></g>
-          </g>
-          <use href="#square" x="21" y="55"/><use href="#square" x="57" y="55"/><use href="#square" x="93" y="55"/><use href="#square" x="129" y="55"/>
-          <use href="#square" x="21" y="85"/><use href="#square" x="57" y="85"/><rect x="93" y="85" width="25" height="21" rx="4" fill="#1252ae"/><use href="#square" x="129" y="85"/>
-          <use href="#square" x="21" y="115"/><use href="#square" x="57" y="115"/><use href="#square" x="93" y="115"/><rect x="129" y="115" width="25" height="21" rx="4" fill="#fffdf6" stroke="#1252ae" stroke-width="2"/>
-        </g>
-        <g transform="translate(116 234) rotate(-16)" stroke="#102957" stroke-width="2" stroke-linejoin="round">
-          <path d="m0 0 27-9h112q8 0 8 9t-8 9H27Z" fill="#ffc82e"/>
-          <path d="m0 0 27-9-4 6 4 4-4 4 4 4z" fill="#f9e5b4"/><path d="m0 0 10-3v6z" fill="#102957"/>
-          <path d="M124-9h15q8 0 8 9t-8 9h-15z" fill="#ec9ba5"/><path d="M120-9h11v18h-11z" fill="#a2c1df"/>
-          <path d="M32-4h84" stroke="#fff092" stroke-width="2"/><path d="M33 5h83" stroke="#cf8e14" stroke-width="1"/>
-        </g>
-        <path d="m22 4 7 32-22-19 33-5-21 22zM249 83l5 18-15-11 20-1-15 11z" fill="none" stroke="#eda900" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
     </div>
   </section>
   <div class="wrap layout">
