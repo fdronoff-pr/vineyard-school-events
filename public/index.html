@@ -139,6 +139,16 @@
   .form-actions, .panel-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
   .panel-heading { justify-content: space-between; margin-bottom: 14px; }
   .panel-heading h2 { margin: 0; }
+  .admin-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .admin-tab, .month-filter { background: white; color: var(--blue); }
+  .admin-tab[aria-selected="true"], .month-filter[aria-pressed="true"] { background: var(--blue); color: white; }
+  .section-card.admin-panel { margin-top: 0; }
+  .admin-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 14px; }
+  .admin-filters label { display: flex; align-items: center; gap: 6px; font-weight: bold; }
+  .admin-filters select { max-width: 100%; min-height: 40px; padding: 5px 8px; border: 1px solid #7387a4; border-radius: 7px; background: white; }
+  .admin-filters a { color: var(--blue); }
+  .suggestion-months { display: flex; gap: 8px; overflow-x: auto; padding: 5px; margin: -5px -5px 9px; scrollbar-width: thin; scrollbar-color: #6187b1 transparent; }
+  .suggestion-months .month-filter { flex: 0 0 auto; white-space: nowrap; }
   .admin-list { margin: 0; padding: 0; list-style: none; }
   .admin-row { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 12px; border-top: 1px solid var(--rule); padding: 12px 0; overflow-wrap: anywhere; }
   .admin-row p { margin: 4px 0; white-space: pre-wrap; }
@@ -264,6 +274,10 @@
   </section>
   <section class="wrap workspace" id="admin-page" hidden>
     <p id="admin-feedback" class="feedback" role="status"></p>
+    <div class="admin-tabs" role="tablist" aria-label="Event types">
+      <button type="button" class="action admin-tab" id="admin-calendar-tab" role="tab" aria-controls="admin-calendar-panel" aria-selected="true">Calendar events</button>
+      <button type="button" class="action admin-tab" id="admin-suggestions-tab" role="tab" aria-controls="admin-suggestions-panel" aria-selected="false" tabindex="-1">Suggested events</button>
+    </div>
     <section class="section-card" id="event-editor" aria-labelledby="editor-title" hidden>
       <h2 id="editor-title" tabindex="-1">Add an event</h2>
       <form id="event-form" class="fields">
@@ -289,12 +303,18 @@
         <p id="editor-feedback" class="feedback" role="status" hidden></p>
       </form>
     </section>
-    <section class="section-card" aria-labelledby="published-title">
-      <div class="panel-heading"><h2 id="published-title">Calendar events</h2><button type="button" id="add-event" class="action">Add event</button></div>
+    <section class="section-card admin-panel" id="admin-calendar-panel" role="tabpanel" aria-labelledby="admin-calendar-tab">
+      <div class="panel-heading"><h2>Calendar events</h2><button type="button" id="add-event" class="action">Add event</button></div>
+      <div class="admin-filters">
+        <label>Year <select id="admin-year"><option value="">All years</option><option>2025</option><option>2026</option><option>2027</option></select></label>
+        <label>Term <select id="admin-term"><option value="">All terms</option><option value="1">Term 1 (Jan–Jun)</option><option value="2">Term 2 (Sep–Dec)</option></select></label>
+        <a href="/events/admin" id="show-all-events" hidden>Show all</a>
+      </div>
       <ul id="admin-events" class="admin-list"></ul>
     </section>
-    <section class="section-card" aria-labelledby="suggestions-title">
-      <h2 id="suggestions-title">Suggested events</h2>
+    <section class="section-card admin-panel" id="admin-suggestions-panel" role="tabpanel" aria-labelledby="admin-suggestions-tab" hidden>
+      <h2>Suggested events</h2>
+      <div id="suggestion-months" class="suggestion-months" role="group" aria-label="Submission month"></div>
       <ul id="admin-suggestions" class="admin-list"></ul>
     </section>
   </section>
@@ -303,6 +323,7 @@
 
   'use strict';
 
+  const termViewOf = (month) => month >= 9 ? 2 : 1;
   const path = location.pathname.replace(/\/$/, "");
   const mode = { "/events/suggest": "suggest", "/events/login": "login", "/events/admin": "admin" }[path];
   if (mode) {
@@ -341,7 +362,6 @@
     const termButtons = [...document.querySelectorAll('[data-term]')];
     const monthNumber = (month) => String(month).padStart(2, '0');
     const monthKey = (year, month) => year + '-' + monthNumber(month);
-    const termViewOf = (month) => month >= 9 ? 2 : 1;
     const makeFormatter = (options) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', ...options });
     const monthFormatter = makeFormatter({ month: 'long' });
     const weekdayFormatter = makeFormatter({ weekday: 'short' });
@@ -570,10 +590,43 @@
     const listFeedback = document.querySelector("#admin-feedback");
     const editorFeedback = document.querySelector("#editor-feedback");
     const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
+    const submissionDate = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Europe/London" });
+    const submissionMonth = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "Europe/London" });
+    const tabs = [...document.querySelectorAll(".admin-tab")];
+    const yearFilter = document.querySelector("#admin-year");
+    const termFilter = document.querySelector("#admin-term");
+    const resetFilters = document.querySelector("#show-all-events");
+    const months = document.querySelector("#suggestion-months");
     const sync = groupControls(form);
     let selectedSuggestion = null;
+    let editorTrigger = null;
+    let calendarEvents = [];
+    let suggestions = [];
+    let suggestionsByMonth = new Map();
+    let activeMonth = "";
 
-    function openEditor(suggestion = null) {
+    function selectTab(tab) {
+      for (const candidate of tabs) {
+        const selected = candidate === tab;
+        candidate.setAttribute("aria-selected", String(selected));
+        candidate.tabIndex = selected ? 0 : -1;
+        document.getElementById(candidate.getAttribute("aria-controls")).hidden = !selected;
+      }
+      tab.focus();
+    }
+
+    for (const [index, tab] of tabs.entries()) {
+      tab.addEventListener("click", () => selectTab(tab));
+      tab.addEventListener("keydown", event => {
+        const target = { ArrowLeft: tabs[1 - index], ArrowRight: tabs[1 - index], Home: tabs[0], End: tabs[1] }[event.key];
+        if (!target) return;
+        event.preventDefault();
+        selectTab(target);
+      });
+    }
+
+    function openEditor(suggestion, trigger) {
+      editorTrigger = trigger;
       form.reset();
       feedback(editorFeedback, "");
       selectedSuggestion = suggestion;
@@ -588,10 +641,12 @@
       title.focus();
     }
 
-    function closeEditor() {
+    function closeEditor(restoreTrigger = true) {
       editor.hidden = true;
       selectedSuggestion = null;
-      addButton.focus();
+      const activeTab = tabs.find(tab => tab.getAttribute("aria-selected") === "true");
+      if (restoreTrigger && editorTrigger?.isConnected && !editorTrigger.closest("[hidden]")) editorTrigger.focus();
+      else activeTab.focus();
     }
 
     function adminRow(record, type) {
@@ -602,7 +657,7 @@
       name.textContent = record.name;
       details.append(name);
       const parts = [
-        record.event_date ? dateFormat.format(new Date(record.event_date + "T00:00:00Z")) : "Suggested " + dateFormat.format(new Date(record.created_at)),
+        record.event_date ? dateFormat.format(new Date(record.event_date + "T00:00:00Z")) : "Suggested " + submissionDate.format(new Date(record.created_at)),
         record.event_time,
         record.status === "planned" ? "Planned" : record.status === "confirmed" ? "Confirmed" : "",
         groupLabel(record.year_groups),
@@ -622,7 +677,7 @@
         create.type = "button";
         create.className = "action";
         create.textContent = "Create event";
-        create.addEventListener("click", () => openEditor(record));
+        create.addEventListener("click", () => openEditor(record, create));
         actions.append(create);
       }
       const remove = document.createElement("button");
@@ -635,7 +690,7 @@
         remove.disabled = true;
         try {
           await eventsApi("admin/" + type + "/" + record.id, { method: "DELETE" });
-          if (selectedSuggestion?.id === record.id) closeEditor();
+          if (selectedSuggestion?.id === record.id) closeEditor(false);
           await loadLists(type === "events" ? "Event removed." : "Suggestion removed.");
         } catch (error) {
           feedback(listFeedback, error.message, true);
@@ -648,23 +703,82 @@
       return row;
     }
 
+    function renderList(type, records, emptyMessage) {
+      const target = document.querySelector("#admin-" + type);
+      const empty = document.createElement("li");
+      empty.textContent = emptyMessage;
+      target.replaceChildren(...(records.length ? records.map(record => adminRow(record, type)) : [empty]));
+    }
+
+    function renderCalendarEvents() {
+      const year = yearFilter.value;
+      const term = termFilter.value;
+      const filtered = Boolean(year || term);
+      resetFilters.hidden = !filtered;
+      const records = calendarEvents.filter(record =>
+        (!year || record.event_date.startsWith(year + "-")) &&
+        (!term || termViewOf(Number(record.event_date.slice(5, 7))) === Number(term)));
+      renderList("events", records, filtered ? "No calendar events match these filters." : "No calendar events.");
+    }
+
+    function renderSuggestions() {
+      for (const button of months.querySelectorAll("button")) {
+        button.setAttribute("aria-pressed", String(button.dataset.month === activeMonth));
+      }
+      renderList("suggestions", activeMonth ? suggestionsByMonth.get(activeMonth) ?? [] : suggestions,
+        activeMonth ? "No suggestions in this month." : "No suggestions awaiting review.");
+    }
+
+    function renderSuggestionMonths() {
+      const entries = [["", "View all months"], ...Array.from(suggestionsByMonth, ([month, records]) =>
+        [month, month + " (" + records.length + ")"])];
+      months.replaceChildren(...entries.map(([month, label]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "action month-filter";
+        button.dataset.month = month;
+        button.textContent = label;
+        button.addEventListener("click", () => {
+          activeMonth = month;
+          renderSuggestions();
+        });
+        return button;
+      }));
+    }
+
+    yearFilter.addEventListener("change", renderCalendarEvents);
+    termFilter.addEventListener("change", renderCalendarEvents);
+    resetFilters.addEventListener("click", event => {
+      event.preventDefault();
+      yearFilter.value = "";
+      termFilter.value = "";
+      renderCalendarEvents();
+      yearFilter.focus();
+    });
+
     async function loadLists(message = "") {
       try {
         const data = await eventsApi("admin");
-        for (const [type, list] of [["events", data.events], ["suggestions", data.suggestions]]) {
-          const target = document.querySelector("#admin-" + type);
-          const empty = document.createElement("li");
-          empty.textContent = type === "events" ? "No calendar events." : "No suggestions awaiting review.";
-          target.replaceChildren(...(list.length ? list.map(record => adminRow(record, type)) : [empty]));
+        calendarEvents = data.events;
+        suggestions = [...data.suggestions].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+        suggestionsByMonth = new Map();
+        for (const record of suggestions) {
+          const month = submissionMonth.format(new Date(record.created_at));
+          if (!suggestionsByMonth.has(month)) suggestionsByMonth.set(month, []);
+          suggestionsByMonth.get(month).push(record);
         }
+        if (!suggestionsByMonth.has(activeMonth)) activeMonth = "";
+        renderCalendarEvents();
+        renderSuggestionMonths();
+        renderSuggestions();
         feedback(listFeedback, message);
       } catch (error) {
         feedback(listFeedback, error.message, true);
       }
     }
 
-    addButton.addEventListener("click", () => openEditor());
-    document.querySelector("#cancel-editor").addEventListener("click", closeEditor);
+    addButton.addEventListener("click", () => openEditor(null, addButton));
+    document.querySelector("#cancel-editor").addEventListener("click", () => closeEditor());
     form.addEventListener("submit", async event => {
       event.preventDefault();
       const details = formPayload(form);
@@ -673,7 +787,7 @@
       submit.disabled = true;
       try {
         await eventsApi("admin/events", { method: "POST", body: JSON.stringify(details) });
-        closeEditor();
+        closeEditor(!details.suggestion_id);
         await loadLists("Event created and added to the calendar.");
       } catch (error) {
         feedback(editorFeedback, error.message, true);
