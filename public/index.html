@@ -155,24 +155,25 @@
   .admin-toolbar #add-event { align-self: flex-start; }
   .admin-toolbar #add-event[hidden] { display: none; }
   .admin-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-  .admin-tab, .month-filter { background: white; color: var(--blue); }
-  .admin-tab { border-radius: 9px 9px 0 0; border-bottom: 0; }
-  .admin-tab[aria-selected="true"], .month-filter[aria-pressed="true"] { background: var(--blue); color: white; }
+  .admin-tab { position: relative; border-radius: 9px 9px 0 0; border-color: var(--rule); border-bottom: 0; background: #f3f8fe; color: var(--blue); font-weight: normal; }
+  .admin-tab[aria-selected="true"] { background: #fffdf8; color: var(--blue); font-weight: bold; }
+  .admin-tab[aria-selected="true"]::after { content: ""; position: absolute; right: 0; bottom: -1px; left: 0; height: 1px; background: #fffdf8; }
+  .month-filter { background: white; color: var(--blue); }
+  .month-filter[aria-pressed="true"] { background: var(--blue); color: white; }
   .section-card.admin-panel { margin-top: 0; border-top: 0; border-radius: 0 0 14px 14px; }
-  .admin-filter-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin-bottom: 18px; }
+  .admin-filter-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin-bottom: 18px; padding: 10px; border-radius: 8px; background: #e8f2fc; }
   .admin-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .admin-filters label { display: flex; align-items: center; gap: 6px; font-weight: bold; }
   .admin-filters select { max-width: 100%; min-height: 40px; padding: 5px 8px; border: 1px solid #7387a4; border-radius: 7px; background: white; }
-  .admin-filters a { color: var(--blue); }
   .calendar-months, .suggestion-months { display: flex; gap: 7px; max-width: 100%; overflow-x: auto; padding: 5px; scrollbar-width: thin; scrollbar-color: #6187b1 transparent; }
   .calendar-months { margin: -5px -5px -5px auto; }
-  .suggestion-months { margin: -5px -5px 9px; }
+  .suggestion-months { padding: 0; }
   .month-filter { flex: 0 0 auto; white-space: nowrap; border-color: #7387a4; color: var(--ink); padding-inline: 11px; }
   .month-filter[aria-pressed="true"] { border-color: var(--blue); }
   @media (max-width: 740px) {
     .admin-toolbar { flex-direction: column; align-items: flex-start; }
     .admin-toolbar #add-event { order: -1; align-self: flex-end; margin-bottom: 6px; }
-    .admin-filter-row { display: grid; }
+    .admin-filter-row { display: grid; grid-template-columns: minmax(0, 1fr); }
     .calendar-months { margin-inline: -5px; }
   }
   .admin-list { margin: 0; padding: 0; list-style: none; }
@@ -381,16 +382,17 @@
     <section class="section-card admin-panel" id="admin-calendar-panel" role="tabpanel" aria-labelledby="admin-calendar-tab">
       <div class="admin-filter-row">
         <div class="admin-filters">
-          <label>Year <select id="admin-year"><option value="">All years</option><option>2025</option><option>2026</option><option>2027</option></select></label>
-          <select id="admin-term" aria-label="Term"><option value="">All terms</option><option value="1">Term 1 (Jan–Jun)</option><option value="2">Term 2 (Sep–Dec)</option></select>
-          <a href="/events/admin" id="show-all-events" hidden>Show all</a>
+          <label>Year <select id="admin-year"><option>2025</option><option>2026</option><option>2027</option></select></label>
+          <select id="admin-term" aria-label="Term"><option value="1">Term 1 (Jan–Jun)</option><option value="2">Term 2 (Sep–Dec)</option></select>
         </div>
         <div id="calendar-month-filters" class="calendar-months" role="group" aria-label="Event month"></div>
       </div>
       <ul id="admin-events" class="admin-list"></ul>
     </section>
     <section class="section-card admin-panel" id="admin-suggestions-panel" role="tabpanel" aria-labelledby="admin-suggestions-tab" hidden>
-      <div id="suggestion-months" class="suggestion-months" role="group" aria-label="Submission month"></div>
+      <div class="admin-filter-row">
+        <div id="suggestion-months" class="suggestion-months" role="group" aria-label="Submission month"></div>
+      </div>
       <ul id="admin-suggestions" class="admin-list"></ul>
     </section>
   </section>
@@ -894,7 +896,6 @@
     const tabs = [...document.querySelectorAll(".admin-tab")];
     const yearFilter = document.querySelector("#admin-year");
     const termFilter = document.querySelector("#admin-term");
-    const resetFilters = document.querySelector("#show-all-events");
     const addEvent = document.querySelector("#add-event");
     const calendarMonths = document.querySelector("#calendar-month-filters");
     const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC" });
@@ -1009,22 +1010,19 @@
     function renderCalendarEvents() {
       const year = yearFilter.value;
       const term = termFilter.value;
-      const filtered = Boolean(year || term || calendarMonth);
-      resetFilters.hidden = !filtered;
       for (const button of calendarMonths.querySelectorAll("button")) {
         button.setAttribute("aria-pressed", String(button.dataset.month === calendarMonth));
       }
       const records = calendarEvents.filter(record =>
-        (!year || record.event_date.startsWith(year + "-")) &&
-        (!term || termViewOf(Number(record.event_date.slice(5, 7))) === Number(term)) &&
+        record.event_date.startsWith(year + "-") &&
+        termViewOf(Number(record.event_date.slice(5, 7))) === Number(term) &&
         (!calendarMonth || record.event_date.slice(5, 7) === calendarMonth));
-      renderList("events", records, filtered ? "No calendar events match these filters." : "No calendar events.");
+      renderList("events", records, "No calendar events match these filters.");
     }
 
     function renderCalendarMonths() {
       const term = termFilter.value;
-      const monthsInScope = term ? termMonths[term] : [...termMonths[1], ...termMonths[2]];
-      const entries = [["", term ? "Whole term" : "All months"], ...monthsInScope.map(month => [
+      const entries = [["", "Whole term"], ...termMonths[term].map(month => [
         String(month).padStart(2, "0"), monthName.format(new Date(Date.UTC(2026, month - 1, 1))),
       ])];
       calendarMonths.replaceChildren(...entries.map(([month, label]) => {
@@ -1072,15 +1070,6 @@
       renderCalendarMonths();
       renderCalendarEvents();
     });
-    resetFilters.addEventListener("click", event => {
-      event.preventDefault();
-      yearFilter.value = "";
-      termFilter.value = "";
-      calendarMonth = "";
-      renderCalendarMonths();
-      renderCalendarEvents();
-      yearFilter.focus();
-    });
 
     async function loadLists(message = "") {
       try {
@@ -1105,13 +1094,19 @@
 
     const params = new URLSearchParams(location.search);
     const ukDate = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/London" });
-    const period = /^\d{4}-\d{2}$/.test(params.get("period") ?? "") ? params.get("period") : ukDate.slice(0, 7);
-    const currentYear = period.slice(0, 4);
-    if ([...yearFilter.options].some(option => option.value === currentYear)) {
-      yearFilter.value = currentYear;
-      termFilter.value = String(termViewOf(Number(period.slice(5, 7))));
-    }
+    const requestedPeriod = params.get("period");
+    const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedPeriod ?? "") ? requestedPeriod : ukDate.slice(0, 7);
+    const supportedYears = [...yearFilter.options].map(option => Number(option.value));
+    const periodYear = Number(period.slice(0, 4));
+    const month = Number(period.slice(5, 7));
+    yearFilter.value = String(Math.max(supportedYears[0], Math.min(periodYear, supportedYears.at(-1))));
+    termFilter.value = String(termViewOf(month));
+    calendarMonth = termMonths[termFilter.value].includes(month) ? period.slice(5, 7) : "06";
     renderCalendarMonths();
+    const selectedMonth = [...calendarMonths.querySelectorAll("button")].find(button => button.dataset.month === calendarMonth);
+    if (selectedMonth) {
+      calendarMonths.scrollLeft += Math.max(0, selectedMonth.getBoundingClientRect().right - calendarMonths.getBoundingClientRect().right);
+    }
     if (params.get("tab") === "suggestions") selectTab(tabs[1], false);
     const saved = params.get("created") === "1" ? "Event created and added to the calendar."
       : params.get("updated") === "1" ? "Event updated." : "";
