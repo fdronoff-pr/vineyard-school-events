@@ -199,7 +199,7 @@
       <span class="school-name" aria-hidden="true">THE<br>VINEYARD<br>SCHOOL</span>
     </a>
     <nav class="brand-actions" aria-label="School Events">
-      <a class="action action-secondary" href="/events/suggest">Suggest event</a>
+      <a class="action action-secondary" id="event-action" href="/events/suggest">Suggest event</a>
       <a class="action action-outline" id="login-link" href="/events/login">Login</a>
       <button type="button" class="action action-outline" id="logout-button" hidden>Logout</button>
     </nav>
@@ -379,11 +379,16 @@
   }
 
   function setupHeader() {
+    const eventAction = document.querySelector("#event-action");
     const login = document.querySelector("#login-link");
     const logout = document.querySelector("#logout-button");
     eventsApi("session").then(({ signedIn }) => {
       login.hidden = signedIn;
       logout.hidden = !signedIn;
+      if (signedIn) {
+        eventAction.textContent = "Event console";
+        eventAction.href = "/events/admin";
+      }
     }).catch(() => {});
     logout.addEventListener("click", async () => {
       logout.disabled = true;
