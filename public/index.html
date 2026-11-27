@@ -180,11 +180,13 @@
   .photo-gallery figure { min-width: 0; margin: 0; }
   .photo-gallery img { display: block; width: 100%; max-height: 420px; object-fit: contain; background: #eef5fb; border-radius: 10px; }
   .photo-gallery figcaption { margin-top: 6px; }
+  .photo-gallery[hidden] { display: none; }
+  .photo-gallery figure[data-removed] img { opacity: .45; }
   .event-back { display: inline-block; margin-bottom: 14px; color: var(--blue); }
   #back-to-events { display: inline-flex; align-items: center; gap: 2px; margin-inline-start: -15px; color: #454545; font-size: 14px; text-decoration: none; }
   #back-to-events .back-label { text-decoration: underline; text-underline-offset: 2px; }
-  #back-to-events .back-icon { display: grid; place-items: center; width: 25px; height: 26px; background: #e3effc; color: var(--blue); }
-  #back-to-events .back-icon::before { content: ""; width: 10px; height: 10px; border-block-end: 2px solid currentColor; border-inline-start: 2px solid currentColor; transform: translateX(2px) rotate(45deg); }
+  #back-to-events .back-icon { display: grid; place-items: center; width: 25px; height: 26px; color: var(--blue); }
+  #back-to-events .back-icon::before { content: ""; width: 12.5px; height: 12.5px; border-block-end: 3px solid currentColor; border-inline-start: 3px solid currentColor; transform: translateX(2px) rotate(45deg) scale(.8); }
   #back-to-events:hover { color: var(--blue); }
 
   @media (max-width: 475px) {
@@ -300,18 +302,6 @@
       </section>
     </article>
   </section>
-  <section class="wrap workspace" id="photos-page" aria-labelledby="title" hidden>
-    <a href="/events/admin" class="event-back">← Back to Event console</a>
-    <section class="section-card">
-      <h2 id="photo-event-name"></h2>
-      <form id="photo-form" class="fields" hidden>
-        <label>Choose photos <input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple required></label>
-        <div class="form-actions"><button type="submit" class="action">Upload photos</button></div>
-      </form>
-      <p id="photo-feedback" class="feedback" role="status"></p>
-      <div id="admin-photo-gallery" class="photo-gallery"></div>
-    </section>
-  </section>
   <section class="wrap workspace" id="suggest-page" hidden>
     <form id="suggest-form" class="section-card editor fields">
       <label>Suggester name (optional) <input name="suggester_name" autocomplete="name" maxlength="120"></label>
@@ -358,6 +348,8 @@
         <label>Date <input type="date" name="event_date" required min="2025-01-01" max="2027-12-31"></label>
         <label>Time (optional) <input name="event_time" maxlength="80" placeholder="For example, 3:15–4:30pm"></label>
         <label>Status <select name="status"><option value="confirmed">Confirmed</option><option value="planned">Planned</option></select></label>
+        <label>Photos (optional) <input type="file" name="event_photos" accept="image/jpeg,image/png,image/webp" multiple></label>
+        <div id="existing-event-photos" class="photo-gallery" aria-label="Existing photos" hidden></div>
         <div class="form-actions">
           <button type="submit" class="action">Create event</button>
           <a href="/events/admin" id="cancel-editor" class="action action-secondary">Cancel</a>
@@ -395,14 +387,14 @@
   setupHeader();
   const path = location.pathname.replace(/\/$/, "");
   const detailRoute = /^\/events\/view\/([a-f\d-]+)$/i.exec(path);
-  const photosRoute = /^\/events\/admin\/photos\/([a-f\d-]+)$/i.exec(path);
-  const mode = detailRoute ? "view" : photosRoute ? "photos" :
+  const editRoute = /^\/events\/admin\/edit\/([a-f\d-]+)$/i.exec(path);
+  const mode = detailRoute ? "view" : editRoute ? "add" :
     { "/events/suggest": "suggest", "/events/login": "login", "/events/admin": "admin", "/events/admin/add": "add" }[path];
   if (mode) {
     const heading = {
       suggest: "Suggest an event", login: "Admin login", admin: "Manage events",
-      view: "Event details", photos: "Manage event photos",
-      add: new URLSearchParams(location.search).has("suggestion") ? "Create event from suggestion" : "Add an event",
+      view: "Event details",
+      add: editRoute ? "Edit event" : new URLSearchParams(location.search).has("suggestion") ? "Create event from suggestion" : "Add an event",
     }[mode];
     document.title = heading + " | Vineyard School Events";
     document.querySelector("#title").textContent = heading;
@@ -411,8 +403,7 @@
     document.querySelector("#calendar-page").hidden = true;
     document.querySelector("#" + mode + "-page").hidden = false;
     if (detailRoute) void showEventDetails(detailRoute[1]);
-    else if (photosRoute) manageEventPhotos(photosRoute[1]);
-    else setupWorkspace(mode);
+    else setupWorkspace(mode, editRoute?.[1]);
   } else {
     setupCalendar();
   }
@@ -704,75 +695,6 @@
     }
   }
 
-  function manageEventPhotos(eventId) {
-    const form = document.querySelector("#photo-form");
-    const status = document.querySelector("#photo-feedback");
-    const gallery = document.querySelector("#admin-photo-gallery");
-    const submit = form.querySelector('[type="submit"]');
-    const endpoint = "admin/events/" + eventId + "/photos";
-
-    async function refresh() {
-      const { event, photos } = await eventsApi("events/" + eventId);
-      document.querySelector("#photo-event-name").textContent = event.name;
-      gallery.replaceChildren(...photos.map((photo, index) => {
-        const figure = makePhoto(photo, event.name, index);
-        const caption = document.createElement("figcaption");
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.className = "action action-danger";
-        remove.textContent = "Remove photo";
-        remove.setAttribute("aria-label", "Remove photo " + (index + 1));
-        remove.addEventListener("click", async () => {
-          if (!window.confirm("Remove this photo?")) return;
-          remove.disabled = true;
-          try {
-            await eventsApi(endpoint + "/" + encodeURIComponent(photo.id), { method: "DELETE" });
-            await refresh();
-            feedback(status, "Photo removed.");
-          } catch (error) {
-            feedback(status, error.message, true);
-            remove.disabled = false;
-          }
-        });
-        caption.append(remove);
-        figure.append(caption);
-        return figure;
-      }));
-      form.hidden = false;
-    }
-
-    form.addEventListener("submit", async event => {
-      event.preventDefault();
-      const files = [...form.elements.photos.files];
-      const errors = [];
-      let uploaded = 0;
-      submit.disabled = true;
-      feedback(status, "Uploading photos…");
-      for (const file of files) {
-        try {
-          const body = await jpegForUpload(file);
-          await eventsApi(endpoint, { method: "POST", body, headers: { "Content-Type": "image/jpeg" } });
-          uploaded++;
-        } catch (error) {
-          errors.push(file.name + " (" + error.message + ")");
-        }
-      }
-      form.reset();
-      try {
-        await refresh();
-        const message = uploaded ? uploaded + (uploaded === 1 ? " photo uploaded." : " photos uploaded.") : "";
-        feedback(status, errors.length ? [message, "Could not upload: " + errors.join("; ")].filter(Boolean).join(" ") : message, Boolean(errors.length));
-      } catch (error) {
-        feedback(status, error.message, true);
-      } finally {
-        submit.disabled = false;
-      }
-    });
-
-    feedback(status, "Loading photos…");
-    refresh().then(() => feedback(status, "")).catch(error => feedback(status, error.message, true));
-  }
-
   function groupLabel(groups) {
     return groups.length === 7 ? "All classes" : groups.join(", ");
   }
@@ -804,7 +726,7 @@
     return { ...Object.fromEntries(data), year_groups: data.getAll("year_groups") };
   }
 
-  function setupWorkspace(mode) {
+  function setupWorkspace(mode, editId) {
     if (mode === "login") {
       const state = new URLSearchParams(location.search).get("access");
       if (state) feedback(document.querySelector("#login-feedback"), state === "denied"
@@ -817,7 +739,7 @@
       return;
     }
     if (mode === "add") {
-      void setupAddEvent();
+      void setupEventEditor(editId);
       return;
     }
     const form = document.querySelector("#suggest-form");
@@ -856,24 +778,66 @@
     });
   }
 
-  async function setupAddEvent() {
+  async function encodeEventPhoto(file) {
+    const jpeg = await jpegForUpload(file);
+    if (jpeg.size > 1572864) throw new Error("This photo is too large: " + file.name);
+    const bytes = new Uint8Array(await jpeg.arrayBuffer());
+    let binary = "";
+    for (let offset = 0; offset < bytes.length; offset += 8192) {
+      binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+    }
+    return btoa(binary);
+  }
+
+  async function setupEventEditor(editId) {
     const form = document.querySelector("#event-form");
     const output = document.querySelector("#editor-feedback");
     const submit = form.querySelector('[type="submit"]');
-    const suggestionId = new URLSearchParams(location.search).get("suggestion");
+    const suggestionId = editId ? null : new URLSearchParams(location.search).get("suggestion");
+    const removedPhotos = new Set();
     const sync = groupControls(form);
 
-    if (suggestionId !== null) {
-      document.querySelector("#cancel-editor").href = "/events/admin?tab=suggestions";
+    if (suggestionId !== null) document.querySelector("#cancel-editor").href = "/events/admin?tab=suggestions";
+    if (editId) submit.textContent = "Save changes";
+    if (editId || suggestionId !== null) {
       submit.disabled = true;
-      feedback(output, "Loading suggestion…");
+      feedback(output, editId ? "Loading event…" : "Loading suggestion…");
       try {
-        const { suggestions } = await eventsApi("admin");
-        const suggestion = suggestions.find(record => record.id === suggestionId);
-        if (!suggestion) throw new Error("This suggestion is no longer available.");
-        form.elements.name.value = suggestion.name;
-        form.elements.description.value = suggestion.description;
-        for (const input of form.elements.year_groups) input.checked = suggestion.year_groups.includes(input.value);
+        let record;
+        if (editId) {
+          const { event, photos } = await eventsApi("events/" + editId);
+          record = event;
+          form.elements.event_date.value = event.event_date;
+          form.elements.event_time.value = event.event_time;
+          form.elements.status.value = event.status;
+          const gallery = document.querySelector("#existing-event-photos");
+          gallery.hidden = photos.length === 0;
+          gallery.replaceChildren(...photos.map((photo, index) => {
+            const figure = makePhoto(photo, event.name, index);
+            const caption = document.createElement("figcaption");
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "action action-danger";
+            const updateLabel = () => remove.textContent = (removedPhotos.has(photo.id) ? "Keep photo " : "Remove photo ") + (index + 1);
+            updateLabel();
+            remove.addEventListener("click", () => {
+              if (removedPhotos.has(photo.id)) removedPhotos.delete(photo.id);
+              else removedPhotos.add(photo.id);
+              figure.toggleAttribute("data-removed", removedPhotos.has(photo.id));
+              updateLabel();
+            });
+            caption.append(remove);
+            figure.append(caption);
+            return figure;
+          }));
+        } else {
+          const { suggestions } = await eventsApi("admin");
+          record = suggestions.find(item => item.id === suggestionId);
+          if (!record) throw new Error("This suggestion is no longer available.");
+        }
+        form.elements.name.value = record.name;
+        form.elements.description.value = record.description;
+        for (const input of form.elements.year_groups) input.checked = record.year_groups.includes(input.value);
         sync();
         feedback(output, "");
         submit.disabled = false;
@@ -885,12 +849,20 @@
 
     form.addEventListener("submit", async event => {
       event.preventDefault();
+      if (submit.disabled) return;
       const details = formPayload(form);
+      delete details.event_photos;
       if (suggestionId) details.suggestion_id = suggestionId;
       submit.disabled = true;
+      feedback(output, "Saving event…");
       try {
-        await eventsApi("admin/events", { method: "POST", body: JSON.stringify(details) });
-        location.replace("/events/admin?created=1");
+        details.added_photos = [];
+        for (const file of form.elements.event_photos.files) details.added_photos.push(await encodeEventPhoto(file));
+        details.removed_photo_ids = [...removedPhotos];
+        await eventsApi(editId ? "admin/events/" + editId : "admin/events", {
+          method: editId ? "PATCH" : "POST", body: JSON.stringify(details),
+        });
+        location.replace(editId ? "/events/admin?updated=1" : "/events/admin?created=1");
       } catch (error) {
         feedback(output, error.message, true);
         submit.disabled = false;
@@ -975,30 +947,33 @@
         create.href = "/events/admin/add?suggestion=" + encodeURIComponent(record.id);
         actions.append(create);
       } else {
-        const photos = document.createElement("a");
-        photos.className = "action action-secondary";
-        photos.href = "/events/admin/photos/" + encodeURIComponent(record.id);
-        photos.textContent = "Manage photos";
-        actions.append(photos);
+        const edit = document.createElement("a");
+        edit.className = "action action-secondary";
+        edit.href = "/events/admin/edit/" + encodeURIComponent(record.id);
+        edit.textContent = "Edit";
+        edit.setAttribute("aria-label", "Edit " + record.name);
+        actions.append(edit);
       }
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "action action-danger";
-      remove.textContent = "Remove";
-      remove.setAttribute("aria-label", "Remove " + record.name);
-      remove.addEventListener("click", async () => {
-        if (!window.confirm("Remove “" + record.name + "”?")) return;
-        remove.disabled = true;
-        try {
-          await eventsApi("admin/" + type + "/" + record.id, { method: "DELETE" });
-          await loadLists(type === "events" ? "Event removed." : "Suggestion removed.");
-        } catch (error) {
-          feedback(listFeedback, error.message, true);
-        } finally {
-          remove.disabled = false;
-        }
-      });
-      actions.append(remove);
+      if (type === "suggestions" || record.event_date > new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/London" })) {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "action action-danger";
+        remove.textContent = "Remove";
+        remove.setAttribute("aria-label", "Remove " + record.name);
+        remove.addEventListener("click", async () => {
+          if (!window.confirm("Remove “" + record.name + "”?")) return;
+          remove.disabled = true;
+          try {
+            await eventsApi("admin/" + type + "/" + record.id, { method: "DELETE" });
+            await loadLists(type === "events" ? "Event removed." : "Suggestion removed.");
+          } catch (error) {
+            feedback(listFeedback, error.message, true);
+          } finally {
+            remove.disabled = false;
+          }
+        });
+        actions.append(remove);
+      }
       row.append(details, actions);
       return row;
     }
@@ -1079,10 +1054,11 @@
 
     const params = new URLSearchParams(location.search);
     if (params.get("tab") === "suggestions") selectTab(tabs[1], false);
-    const created = params.get("created") === "1";
-    if (created) history.replaceState(null, "", "/events/admin");
+    const saved = params.get("created") === "1" ? "Event created and added to the calendar."
+      : params.get("updated") === "1" ? "Event updated." : "";
+    if (saved) history.replaceState(null, "", "/events/admin");
     feedback(listFeedback, "Loading events and suggestions…");
-    void loadLists(created ? "Event created and added to the calendar." : "");
+    void loadLists(saved);
   }
 </script>
 </body>
