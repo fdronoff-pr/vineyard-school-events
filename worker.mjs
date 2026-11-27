@@ -12,11 +12,15 @@ class RequestError extends Error {
   }
 }
 
-function sessionToken(request) {
-  const cookies = new Map((request.headers.get("Cookie") ?? "").split(/;\s*/).map(entry => {
+function requestCookies(request) {
+  return new Map((request.headers.get("Cookie") ?? "").split(/;\s*/).map(entry => {
     const separator = entry.indexOf("=");
     return [entry.slice(0, separator), entry.slice(separator + 1)];
   }));
+}
+
+function sessionToken(request) {
+  const cookies = requestCookies(request);
   let session = cookies.get(authCookie) ?? "";
   if (!session) {
     for (let index = 0; cookies.has(authCookie + "." + index); index++) {
@@ -145,8 +149,31 @@ const eventQuery = eventsTable + "?select=id,event_date,name,event_time,descript
 const suggestionQuery = suggestionsTable + "?select=id,name,description,year_groups,suggester_name,created_at&order=created_at.desc,id";
 const uuidFormat = /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i;
 
+async function logout(request, url) {
+  if (request.headers.get("Origin") !== url.origin) throw new RequestError(403, "Invalid request origin.");
+  const token = sessionToken(request);
+  if (token) {
+    const response = await fetch(supabaseUrl + "/auth/v1/logout?scope=local", {
+      method: "POST",
+      headers: { apikey: publishableKey, Authorization: "Bearer " + token },
+    });
+    if (!response.ok && ![401, 403, 404].includes(response.status)) {
+      throw new RequestError(503, "Sign-out is temporarily unavailable. Please try again.");
+    }
+  }
+  const headers = new Headers({ "Cache-Control": "no-store" });
+  for (const cookie of requestCookies(request).keys()) {
+    if (cookie === authCookie || (cookie.startsWith(authCookie + ".") && /^\d+$/.test(cookie.slice(authCookie.length + 1)))) {
+      headers.append("Set-Cookie", cookie + "=; Max-Age=0; Path=/; Secure; SameSite=Lax");
+    }
+  }
+  return new Response(null, { status: 204, headers });
+}
+
 async function api(request, url, path) {
   const method = request.method;
+  if (path === "/api/session" && method === "GET") return json({ signedIn: Boolean(await adminToken(request)) });
+  if (path === "/api/logout" && method === "POST") return logout(request, url);
   if (path === "/api/events" && method === "GET") return json(await allRows(eventQuery));
   if (path === "/api/suggestions" && method === "POST") {
     const details = formDetails(await jsonBody(request, url), false);

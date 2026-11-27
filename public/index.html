@@ -39,14 +39,21 @@
     background-size: 160px 160px, 26px 26px, 26px 26px, cover;
     background-position: 0 0, 8px 0, 8px 0, center;
   }
-  .hero-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) clamp(145px, 25vw, 255px); align-items: center; gap: 20px; min-height: 296px; padding-block: 34px 20px; }
+  .hero-layout { container-type: inline-size; position: relative; display: grid; grid-template-columns: minmax(0, 1fr) clamp(145px, 25vw, 255px); align-items: center; gap: 20px; min-height: 296px; padding-block: 34px 20px; }
   .eyebrow, .intro { font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
   .eyebrow { margin: 0 0 18px; color: var(--blue); font-size: 16px; }
   h1 { margin: 0; font: bold clamp(36px, 5.8vw, 62px)/1.05 var(--serif); letter-spacing: -.035em; }
   .underlined { position: relative; display: inline-block; }
   .underlined::after { content: ""; position: absolute; left: 0; right: 0; bottom: -.11em; height: .1em; border-radius: 60% 35% 55% 30%; background: #ffcb18; transform: rotate(-1.6deg); }
   .intro { margin: 23px 0 0; color: var(--muted); font-size: 14px; }
-  .filters { display: flex; flex-wrap: wrap; gap: 12px 14px; margin-top: 46px; align-items: center; }
+  .filters { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 4px; align-items: center; width: max(200px, calc((100cqw - var(--calendar-gap)) * .29)); margin-top: 46px; }
+  .term-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .term-arrow { display: grid; place-items: center; height: 45px; padding: 0; border: 1px solid var(--blue); border-radius: 9px; background: #fafdff; color: var(--blue); font: bold 20px/1 system-ui, sans-serif; cursor: pointer; }
+  .term-arrow:hover:enabled { background: #dbeaf6; }
+  .term-arrow:disabled { opacity: .45; cursor: default; }
+  .term-controls .year-picker { padding-left: 8px; gap: 2px; font-size: 14px; }
+  .term-controls .year-picker select { min-width: 60px; padding-inline: 3px; }
+  .term-controls .terms button { min-width: 0; padding-inline: 7px; font-size: 14px; white-space: nowrap; }
   .year-picker, .terms { display: inline-flex; min-height: 45px; border: 1px solid var(--blue); border-radius: 11px; background: #fafdff; font-weight: bold; }
   .year-picker { align-items: center; padding-left: 15px; gap: 5px; }
   .year-picker select { align-self: stretch; min-width: 82px; border: 0; background: transparent; border-radius: 9px; padding: 0 7px; }
@@ -57,7 +64,8 @@
   .terms button[aria-pressed="true"], .month[aria-current="date"] { background: var(--blue); color: white; border-color: var(--blue); }
   .terms button:hover:not([aria-pressed="true"]), .month:hover:not([aria-current]) { background: #dbeaf6; }
   .hero-art { width: 100%; align-self: end; margin-bottom: -3px; }
-  .layout { display: grid; grid-template-columns: minmax(200px, 29fr) minmax(0, 71fr); align-items: start; gap: 40px; padding-block: 33px 58px; }
+  :root { --calendar-gap: 40px; }
+  .layout { display: grid; grid-template-columns: minmax(200px, 29fr) minmax(0, 71fr); align-items: start; gap: var(--calendar-gap); padding-block: 33px 58px; }
   .months { display: grid; gap: 12px; }
   .month-scroll-hint { margin: 2px 5px 0; color: var(--muted); font-size: 12px; font-weight: 700; }
   .month { width: 100%; min-height: 73px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px clamp(13px, 2vw, 20px); text-align: left; border-radius: 14px; border: 1px solid var(--rule); background: var(--week); }
@@ -83,7 +91,8 @@
   @media (max-width: 735px) {
     .hero-layout { grid-template-columns: minmax(0, 1fr) 150px; min-height: 235px; }
     .eyebrow { font-size: 13px; }
-    .filters { margin-top: 25px; }
+    .filters { width: calc(100cqw - 10px); margin: 25px 5px 0; }
+    .hero-art { align-self: start; }
     .layout { grid-template-columns: minmax(0, 1fr); padding-top: 18px; }
     .months {
       grid-auto-flow: column;
@@ -115,6 +124,8 @@
     .terms button[aria-pressed="true"], .month[aria-current] { border: 2px solid Highlight; }
   }
 
+  .school-logo { display: inline-flex; align-items: center; gap: inherit; color: inherit; text-decoration: none; }
+  .brand-actions [hidden] { display: none; }
   .brand-actions { display: flex; gap: 8px; margin-inline-start: auto; }
   .action { display: inline-block; border: 1px solid var(--blue); border-radius: 9px; padding: 9px 14px; background: var(--blue); color: white; font: inherit; font-weight: bold; text-decoration: none; text-align: center; }
   .action-secondary { background: white; color: var(--blue); }
@@ -168,7 +179,8 @@
 <body>
 <header class="brand">
   <div class="wrap lockup">
-    <div class="crest" aria-hidden="true">
+    <a class="school-logo" href="/events" aria-label="The Vineyard School events calendar">
+      <div class="crest" aria-hidden="true">
       <svg class="crest-leaf" viewBox="0 0 82 64" aria-hidden="true">
         <defs>
           <g id="laurel" fill="white">
@@ -181,8 +193,13 @@
       </svg>
       V
     </div>
-    <a class="school-name" href="/events" aria-label="The Vineyard School events calendar" style="color:inherit;text-decoration:none">THE<br>VINEYARD<br>SCHOOL</a>
-    <nav class="brand-actions" aria-label="School Events"><a class="action action-secondary" href="/events/suggest">Suggest event</a><a class="action action-outline" href="/events/login">Login</a></nav>
+      <span class="school-name" aria-hidden="true">THE<br>VINEYARD<br>SCHOOL</span>
+    </a>
+    <nav class="brand-actions" aria-label="School Events">
+      <a class="action action-secondary" href="/events/suggest">Suggest event</a>
+      <a class="action action-outline" id="login-link" href="/events/login">Login</a>
+      <button type="button" class="action action-outline" id="logout-button" hidden>Logout</button>
+    </nav>
   </div>
 </header>
 <main>
@@ -193,13 +210,17 @@
         <h1 id="title">Vineyard School <span class="underlined">Events</span></h1>
         <p class="intro">A little planning. A lot to look forward to.</p>
         <div class="filters">
-          <label class="year-picker">Year <select id="year">
-            <option>2025</option><option selected>2026</option><option>2027</option>
-          </select></label>
-          <div class="terms" role="group" aria-label="School term">
-            <button type="button" data-term="1" aria-pressed="false" aria-label="Term 1, January to June">Term 1</button>
-            <button type="button" data-term="2" aria-pressed="true" aria-label="Term 2, September to December">Term 2</button>
+          <button type="button" class="term-arrow" id="previous-term" aria-label="Previous term">&larr;</button>
+          <div class="term-controls">
+            <label class="year-picker">Year <select id="year">
+              <option>2025</option><option selected>2026</option><option>2027</option>
+            </select></label>
+            <div class="terms" role="group" aria-label="School term">
+              <button type="button" data-term="1" aria-pressed="false" aria-label="Term 1, January to June">Term 1</button>
+              <button type="button" data-term="2" aria-pressed="true" aria-label="Term 2, September to December">Term 2</button>
+            </div>
           </div>
+          <button type="button" class="term-arrow" id="next-term" aria-label="Next term">&rarr;</button>
         </div>
       </div>
       <svg class="hero-art" viewBox="0 0 270 245" aria-hidden="true">
@@ -324,6 +345,7 @@
   'use strict';
 
   const termViewOf = (month) => month >= 9 ? 2 : 1;
+  setupHeader();
   const path = location.pathname.replace(/\/$/, "");
   const mode = { "/events/suggest": "suggest", "/events/login": "login", "/events/admin": "admin", "/events/admin/add": "add" }[path];
   if (mode) {
@@ -353,10 +375,32 @@
     return data;
   }
 
+  function setupHeader() {
+    const login = document.querySelector("#login-link");
+    const logout = document.querySelector("#logout-button");
+    eventsApi("session").then(({ signedIn }) => {
+      login.hidden = signedIn;
+      logout.hidden = !signedIn;
+    }).catch(() => {});
+    logout.addEventListener("click", async () => {
+      logout.disabled = true;
+      try {
+        await eventsApi("logout", { method: "POST" });
+        location.replace("/events");
+      } catch (error) {
+        window.alert(error.message);
+        logout.disabled = false;
+      }
+    });
+  }
+
   function setupCalendar() {
     const eventsByMonth = new Map();
 
     const yearPicker = document.querySelector('#year');
+    const previousTerm = document.querySelector('#previous-term');
+    const nextTerm = document.querySelector('#next-term');
+    const years = [...yearPicker.options].map(option => Number(option.value));
     const monthNav = document.querySelector('#months');
     const monthScrollHint = document.querySelector('#month-scroll-hint');
     const title = document.querySelector('#month-title');
@@ -474,8 +518,25 @@
       else monthNav.removeAttribute('aria-describedby');
     }
 
+    const termIndex = () => year * 2 + termViewOf(month) - 1;
+    const firstTermIndex = years[0] * 2;
+    const lastTermIndex = years.at(-1) * 2 + 1;
+
+    function updateTermArrows() {
+      previousTerm.disabled = termIndex() <= firstTermIndex;
+      nextTerm.disabled = termIndex() >= lastTermIndex;
+    }
+
+    function stepTerm(direction) {
+      const destination = termIndex() + direction;
+      if (destination < firstTermIndex || destination > lastTermIndex) return;
+      const term = destination % 2 + 1;
+      selectMonth(Math.floor(destination / 2), lastMonth[term]);
+    }
+
     function render(rebuildNav = true) {
       yearPicker.value = year;
+      updateTermArrows();
       for (const button of termButtons) {
         button.setAttribute('aria-pressed', String(Number(button.dataset.term) === termViewOf(month)));
       }
@@ -488,6 +549,8 @@
       updateScrollHint();
     }
 
+    previousTerm.addEventListener('click', () => stepTerm(-1));
+    nextTerm.addEventListener('click', () => stepTerm(1));
     new ResizeObserver(updateScrollHint).observe(monthNav);
     yearPicker.addEventListener('pointerdown', () => yearPicker.setAttribute('data-pointer-focus', ''));
     yearPicker.addEventListener('blur', () => yearPicker.removeAttribute('data-pointer-focus'));
@@ -501,6 +564,7 @@
       render();
     });
     readLocation();
+    updateTermArrows();
     title.textContent = monthName(month);
     eventsPanel.replaceChildren(element('p', 'empty', 'Loading events…'));
     eventsApi("events").then(records => {
