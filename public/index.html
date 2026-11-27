@@ -249,6 +249,7 @@
   </div>
   <section class="wrap workspace" id="suggest-page" hidden>
     <form id="suggest-form" class="section-card editor fields">
+      <label>Suggester name (optional) <input name="suggester_name" autocomplete="name" maxlength="120"></label>
       <label>Event name <input name="name" required maxlength="120"></label>
 <label>Description <textarea name="description" required maxlength="2000" rows="5"></textarea></label>
 <fieldset class="groups"><legend>Year groups</legend><div class="group-options">
@@ -677,6 +678,7 @@
         record.event_time,
         record.status === "planned" ? "Planned" : record.status === "confirmed" ? "Confirmed" : "",
         groupLabel(record.year_groups),
+        type === "suggestions" && record.suggester_name ? "Suggested by " + record.suggester_name : "",
       ].filter(Boolean);
       const meta = document.createElement("p");
       meta.textContent = parts.join(" · ");
