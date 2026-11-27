@@ -181,6 +181,11 @@
   .photo-gallery img { display: block; width: 100%; max-height: 420px; object-fit: contain; background: #eef5fb; border-radius: 10px; }
   .photo-gallery figcaption { margin-top: 6px; }
   .event-back { display: inline-block; margin-bottom: 14px; color: var(--blue); }
+  #back-to-events { display: inline-flex; align-items: center; gap: 2px; margin-inline-start: -15px; color: #454545; font-size: 14px; text-decoration: none; }
+  #back-to-events .back-label { text-decoration: underline; text-underline-offset: 2px; }
+  #back-to-events .back-icon { display: grid; place-items: center; width: 25px; height: 26px; background: #e3effc; color: var(--blue); }
+  #back-to-events .back-icon::before { content: ""; width: 10px; height: 10px; border-block-end: 2px solid currentColor; border-inline-start: 2px solid currentColor; transform: translateX(2px) rotate(45deg); }
+  #back-to-events:hover { color: var(--blue); }
 
   @media (max-width: 475px) {
     .brand-actions { gap: 5px; }
@@ -284,7 +289,7 @@
     </section>
   </div>
   <section class="wrap workspace" id="view-page" aria-labelledby="title" hidden>
-    <a href="/events" class="event-back" id="back-to-events">← Back to events</a>
+    <a href="/events" class="event-back" id="back-to-events"><span class="back-icon" aria-hidden="true"></span><span class="back-label">back to events</span></a>
     <article class="section-card">
       <p id="detail-feedback" class="feedback" role="status"></p>
       <p class="detail-meta" id="detail-meta" hidden></p>
