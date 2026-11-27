@@ -310,6 +310,9 @@
   <section class="wrap workspace" id="suggest-page" hidden>
     <form id="suggest-form" class="section-card editor fields">
       <label>Suggester name (optional) <input name="suggester_name" autocomplete="name" maxlength="120"></label>
+      <label>Related event (optional)
+        <select name="related_event_id" disabled><option value="">No related event</option></select>
+      </label>
       <label>Event name <input name="name" required maxlength="120"></label>
 <label>Description <textarea name="description" required maxlength="2000" rows="5"></textarea></label>
 <fieldset class="groups"><legend>Year groups</legend><div class="group-options">
@@ -814,7 +817,17 @@
     }
     const form = document.querySelector("#suggest-form");
     const output = document.querySelector("#suggest-feedback");
+    const relatedEvent = form.elements.related_event_id;
     const sync = groupControls(form);
+    eventsApi("events").then(events => {
+      const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
+      for (const event of events) {
+        relatedEvent.add(new Option(event.name + " (" + date.format(new Date(event.event_date + "T00:00:00Z")) + ")", event.id));
+      }
+      relatedEvent.disabled = false;
+    }).catch(() => {
+      relatedEvent.options[0].textContent = "Calendar events temporarily unavailable";
+    });
     form.addEventListener("submit", async event => {
       event.preventDefault();
       const details = formPayload(form);
@@ -932,6 +945,17 @@
       const meta = document.createElement("p");
       meta.textContent = parts.join(" · ");
       details.append(meta);
+      if (type === "suggestions" && record.related_event_id) {
+        const related = calendarEvents.find(event => event.id === record.related_event_id);
+        if (related) {
+          const note = document.createElement("p");
+          const link = document.createElement("a");
+          link.href = "/events/view/" + encodeURIComponent(related.id);
+          link.textContent = related.name;
+          note.append("Related event: ", link);
+          details.append(note);
+        }
+      }
       if (record.description) {
         const description = document.createElement("p");
         description.textContent = record.description;

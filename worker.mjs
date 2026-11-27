@@ -65,6 +65,10 @@ async function database(path, { token, headers, ...options } = {}) {
   });
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) throw new RequestError(403, "You do not have access to this action.");
+    if (path === suggestionsTable && response.status === 409) {
+      const problem = await response.json().catch(() => null);
+      if (problem?.code === "23503") throw new RequestError(409, "The related event is no longer available. Choose another event or leave the field blank.");
+    }
     throw new RequestError(503, "Events are temporarily unavailable. Please try again.");
   }
   const content = await response.text();
@@ -131,7 +135,11 @@ function formDetails(body, isEvent) {
   if (!isEvent) {
     const suggesterName = typeof body.suggester_name === "string" ? body.suggester_name.trim() : "";
     if (suggesterName.length > 120) throw new RequestError(400, "Suggester name must be 120 characters or fewer.");
-    return { ...details, suggester_name: suggesterName || null };
+    const relatedEventId = body.related_event_id || null;
+    if (relatedEventId !== null && (typeof relatedEventId !== "string" || !uuidFormat.test(relatedEventId))) {
+      throw new RequestError(400, "Choose a related event from the calendar.");
+    }
+    return { ...details, suggester_name: suggesterName || null, related_event_id: relatedEventId };
   }
   const date = typeof body.event_date === "string" ? body.event_date : "";
   if (!/^202[5-7]-(0[1-6]|09|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(date)
@@ -146,7 +154,7 @@ function formDetails(body, isEvent) {
 }
 
 const eventQuery = eventsTable + "?select=id,event_date,name,event_time,description,year_groups,status&order=event_date,sort_order,created_at,id";
-const suggestionQuery = suggestionsTable + "?select=id,name,description,year_groups,suggester_name,created_at&order=created_at.desc,id";
+const suggestionQuery = suggestionsTable + "?select=id,name,description,year_groups,suggester_name,related_event_id,created_at&order=created_at.desc,id";
 const uuidFormat = /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i;
 
 async function logout(request, url) {
