@@ -272,15 +272,8 @@
       <a class="action" href="/?view=auth&amp;events=admin">Continue with Google</a>
     </div>
   </section>
-  <section class="wrap workspace" id="admin-page" hidden>
-    <p id="admin-feedback" class="feedback" role="status"></p>
-    <div class="admin-tabs" role="tablist" aria-label="Event types">
-      <button type="button" class="action admin-tab" id="admin-calendar-tab" role="tab" aria-controls="admin-calendar-panel" aria-selected="true">Calendar events</button>
-      <button type="button" class="action admin-tab" id="admin-suggestions-tab" role="tab" aria-controls="admin-suggestions-panel" aria-selected="false" tabindex="-1">Suggested events</button>
-    </div>
-    <section class="section-card" id="event-editor" aria-labelledby="editor-title" hidden>
-      <h2 id="editor-title" tabindex="-1">Add an event</h2>
-      <form id="event-form" class="fields">
+  <section class="wrap workspace" id="add-page" aria-labelledby="title" hidden>
+      <form id="event-form" class="section-card editor fields">
         <label>Event name <input name="name" required maxlength="120"></label>
 <label>Description (optional) <textarea name="description" maxlength="2000" rows="5"></textarea></label>
 <fieldset class="groups"><legend>Year groups</legend><div class="group-options">
@@ -298,13 +291,19 @@
         <label>Status <select name="status"><option value="confirmed">Confirmed</option><option value="planned">Planned</option></select></label>
         <div class="form-actions">
           <button type="submit" class="action">Create event</button>
-          <button type="button" id="cancel-editor" class="action action-secondary">Cancel</button>
+          <a href="/events/admin" id="cancel-editor" class="action action-secondary">Cancel</a>
         </div>
         <p id="editor-feedback" class="feedback" role="status" hidden></p>
       </form>
-    </section>
+  </section>
+  <section class="wrap workspace" id="admin-page" hidden>
+    <p id="admin-feedback" class="feedback" role="status"></p>
+    <div class="admin-tabs" role="tablist" aria-label="Event types">
+      <button type="button" class="action admin-tab" id="admin-calendar-tab" role="tab" aria-controls="admin-calendar-panel" aria-selected="true">Calendar events</button>
+      <button type="button" class="action admin-tab" id="admin-suggestions-tab" role="tab" aria-controls="admin-suggestions-panel" aria-selected="false" tabindex="-1">Suggested events</button>
+    </div>
     <section class="section-card admin-panel" id="admin-calendar-panel" role="tabpanel" aria-labelledby="admin-calendar-tab">
-      <div class="panel-heading"><h2>Calendar events</h2><button type="button" id="add-event" class="action">Add event</button></div>
+      <div class="panel-heading"><h2>Calendar events</h2><a id="add-event" class="action" href="/events/admin/add">Add event</a></div>
       <div class="admin-filters">
         <label>Year <select id="admin-year"><option value="">All years</option><option>2025</option><option>2026</option><option>2027</option></select></label>
         <label>Term <select id="admin-term"><option value="">All terms</option><option value="1">Term 1 (Jan–Jun)</option><option value="2">Term 2 (Sep–Dec)</option></select></label>
@@ -325,9 +324,12 @@
 
   const termViewOf = (month) => month >= 9 ? 2 : 1;
   const path = location.pathname.replace(/\/$/, "");
-  const mode = { "/events/suggest": "suggest", "/events/login": "login", "/events/admin": "admin" }[path];
+  const mode = { "/events/suggest": "suggest", "/events/login": "login", "/events/admin": "admin", "/events/admin/add": "add" }[path];
   if (mode) {
-    const heading = { suggest: "Suggest an event", login: "Admin login", admin: "Manage events" }[mode];
+    const heading = {
+      suggest: "Suggest an event", login: "Admin login", admin: "Manage events",
+      add: new URLSearchParams(location.search).has("suggestion") ? "Create event from suggestion" : "Add an event",
+    }[mode];
     document.title = heading + " | Vineyard School Events";
     document.querySelector("#title").textContent = heading;
     document.querySelector(".intro").hidden = true;
@@ -556,6 +558,10 @@
       setupAdmin();
       return;
     }
+    if (mode === "add") {
+      void setupAddEvent();
+      return;
+    }
     const form = document.querySelector("#suggest-form");
     const output = document.querySelector("#suggest-feedback");
     const sync = groupControls(form);
@@ -582,13 +588,50 @@
     });
   }
 
-  function setupAdmin() {
-    const editor = document.querySelector("#event-editor");
+  async function setupAddEvent() {
     const form = document.querySelector("#event-form");
-    const title = document.querySelector("#editor-title");
-    const addButton = document.querySelector("#add-event");
+    const output = document.querySelector("#editor-feedback");
+    const submit = form.querySelector('[type="submit"]');
+    const suggestionId = new URLSearchParams(location.search).get("suggestion");
+    const sync = groupControls(form);
+
+    if (suggestionId !== null) {
+      document.querySelector("#cancel-editor").href = "/events/admin?tab=suggestions";
+      submit.disabled = true;
+      feedback(output, "Loading suggestion…");
+      try {
+        const { suggestions } = await eventsApi("admin");
+        const suggestion = suggestions.find(record => record.id === suggestionId);
+        if (!suggestion) throw new Error("This suggestion is no longer available.");
+        form.elements.name.value = suggestion.name;
+        form.elements.description.value = suggestion.description;
+        for (const input of form.elements.year_groups) input.checked = suggestion.year_groups.includes(input.value);
+        sync();
+        feedback(output, "");
+        submit.disabled = false;
+      } catch (error) {
+        feedback(output, error.message, true);
+        return;
+      }
+    }
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const details = formPayload(form);
+      if (suggestionId) details.suggestion_id = suggestionId;
+      submit.disabled = true;
+      try {
+        await eventsApi("admin/events", { method: "POST", body: JSON.stringify(details) });
+        location.replace("/events/admin?created=1");
+      } catch (error) {
+        feedback(output, error.message, true);
+        submit.disabled = false;
+      }
+    });
+  }
+
+  function setupAdmin() {
     const listFeedback = document.querySelector("#admin-feedback");
-    const editorFeedback = document.querySelector("#editor-feedback");
     const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
     const submissionDate = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Europe/London" });
     const submissionMonth = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "Europe/London" });
@@ -597,22 +640,19 @@
     const termFilter = document.querySelector("#admin-term");
     const resetFilters = document.querySelector("#show-all-events");
     const months = document.querySelector("#suggestion-months");
-    const sync = groupControls(form);
-    let selectedSuggestion = null;
-    let editorTrigger = null;
     let calendarEvents = [];
     let suggestions = [];
     let suggestionsByMonth = new Map();
     let activeMonth = "";
 
-    function selectTab(tab) {
+    function selectTab(tab, focus = true) {
       for (const candidate of tabs) {
         const selected = candidate === tab;
         candidate.setAttribute("aria-selected", String(selected));
         candidate.tabIndex = selected ? 0 : -1;
         document.getElementById(candidate.getAttribute("aria-controls")).hidden = !selected;
       }
-      tab.focus();
+      if (focus) tab.focus();
     }
 
     for (const [index, tab] of tabs.entries()) {
@@ -623,30 +663,6 @@
         event.preventDefault();
         selectTab(target);
       });
-    }
-
-    function openEditor(suggestion, trigger) {
-      editorTrigger = trigger;
-      form.reset();
-      feedback(editorFeedback, "");
-      selectedSuggestion = suggestion;
-      title.textContent = suggestion ? "Create event from suggestion" : "Add an event";
-      if (suggestion) {
-        form.elements.name.value = suggestion.name;
-        form.elements.description.value = suggestion.description;
-        for (const input of form.elements.year_groups) input.checked = suggestion.year_groups.includes(input.value);
-      }
-      sync();
-      editor.hidden = false;
-      title.focus();
-    }
-
-    function closeEditor(restoreTrigger = true) {
-      editor.hidden = true;
-      selectedSuggestion = null;
-      const activeTab = tabs.find(tab => tab.getAttribute("aria-selected") === "true");
-      if (restoreTrigger && editorTrigger?.isConnected && !editorTrigger.closest("[hidden]")) editorTrigger.focus();
-      else activeTab.focus();
     }
 
     function adminRow(record, type) {
@@ -673,11 +689,10 @@
       const actions = document.createElement("div");
       actions.className = "form-actions";
       if (type === "suggestions") {
-        const create = document.createElement("button");
-        create.type = "button";
+        const create = document.createElement("a");
         create.className = "action";
         create.textContent = "Create event";
-        create.addEventListener("click", () => openEditor(record, create));
+        create.href = "/events/admin/add?suggestion=" + encodeURIComponent(record.id);
         actions.append(create);
       }
       const remove = document.createElement("button");
@@ -690,7 +705,6 @@
         remove.disabled = true;
         try {
           await eventsApi("admin/" + type + "/" + record.id, { method: "DELETE" });
-          if (selectedSuggestion?.id === record.id) closeEditor(false);
           await loadLists(type === "events" ? "Event removed." : "Suggestion removed.");
         } catch (error) {
           feedback(listFeedback, error.message, true);
@@ -777,26 +791,12 @@
       }
     }
 
-    addButton.addEventListener("click", () => openEditor(null, addButton));
-    document.querySelector("#cancel-editor").addEventListener("click", () => closeEditor());
-    form.addEventListener("submit", async event => {
-      event.preventDefault();
-      const details = formPayload(form);
-      if (selectedSuggestion) details.suggestion_id = selectedSuggestion.id;
-      const submit = form.querySelector('[type="submit"]');
-      submit.disabled = true;
-      try {
-        await eventsApi("admin/events", { method: "POST", body: JSON.stringify(details) });
-        closeEditor(!details.suggestion_id);
-        await loadLists("Event created and added to the calendar.");
-      } catch (error) {
-        feedback(editorFeedback, error.message, true);
-      } finally {
-        submit.disabled = false;
-      }
-    });
+    const params = new URLSearchParams(location.search);
+    if (params.get("tab") === "suggestions") selectTab(tabs[1], false);
+    const created = params.get("created") === "1";
+    if (created) history.replaceState(null, "", "/events/admin");
     feedback(listFeedback, "Loading events and suggestions…");
-    void loadLists();
+    void loadLists(created ? "Event created and added to the calendar." : "");
   }
 </script>
 </body>

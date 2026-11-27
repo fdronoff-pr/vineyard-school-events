@@ -185,21 +185,22 @@ export default {
     const url = new URL(request.url);
     if (url.pathname !== "/events" && !url.pathname.startsWith("/events/")) return new Response("Not found", { status: 404 });
     const path = url.pathname.slice("/events".length).replace(/\/$/, "");
+    const adminPage = path === "/admin" || path === "/admin/add";
     try {
       if (path.startsWith("/api/")) return await api(request, url, path);
-      if (!["", "/suggest", "/login", "/admin", "/hero-background.jpg"].includes(path)) return new Response("Not found", { status: 404 });
+      if (!["", "/suggest", "/login", "/admin", "/admin/add", "/hero-background.jpg"].includes(path)) return new Response("Not found", { status: 404 });
       if (!["GET", "HEAD"].includes(request.method)) return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
-      if (path === "/admin" && !await adminToken(request)) return redirect(url, "/events/login?access=denied");
+      if (adminPage && !await adminToken(request)) return redirect(url, "/events/login?access=denied");
       if (path === "/login" && !url.searchParams.has("access") && await adminToken(request)) return redirect(url, "/events/admin");
       url.pathname = path === "/hero-background.jpg" ? path : "/";
       url.search = "";
       const assetRequest = new Request(url, request);
-      if (path === "/admin" || path === "/login") {
+      if (adminPage || path === "/login") {
         assetRequest.headers.delete("If-None-Match");
         assetRequest.headers.delete("If-Modified-Since");
       }
       const response = await env.ASSETS.fetch(assetRequest);
-      if (path === "/admin" || path === "/login") {
+      if (adminPage || path === "/login") {
         const privateResponse = new Response(response.body, response);
         privateResponse.headers.set("Cache-Control", "no-store");
         return privateResponse;
