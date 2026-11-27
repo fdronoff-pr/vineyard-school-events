@@ -57,7 +57,8 @@
   .terms button[aria-pressed="true"], .month[aria-current="date"] { background: var(--blue); color: white; border-color: var(--blue); }
   .terms button:hover:not([aria-pressed="true"]), .month:hover:not([aria-current]) { background: #dbeaf6; }
   .hero-art { width: 100%; align-self: end; margin-bottom: -3px; }
-  .layout { width: min(100%, 1430px); display: grid; grid-template-columns: minmax(200px, 29fr) minmax(0, 71fr); align-items: start; gap: 40px; padding-block: 33px 58px; }
+  .hero-layout, .layout { width: min(100%, 1430px); }
+  .layout { display: grid; grid-template-columns: minmax(200px, 29fr) minmax(0, 71fr); align-items: start; gap: 40px; padding-block: 33px 58px; }
   .months { display: grid; gap: 12px; }
   .month-scroll-hint { margin: 2px 5px 0; color: var(--muted); font-size: 12px; font-weight: 700; }
   .month { width: 100%; min-height: 73px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px clamp(13px, 2vw, 20px); text-align: left; border-radius: 14px; border: 1px solid var(--rule); background: var(--week); }
