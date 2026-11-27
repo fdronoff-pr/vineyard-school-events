@@ -139,7 +139,9 @@ function formDetails(body, isEvent) {
     if (relatedEventId !== null && (typeof relatedEventId !== "string" || !uuidFormat.test(relatedEventId))) {
       throw new RequestError(400, "Choose a related event from the calendar.");
     }
-    return { ...details, suggester_name: suggesterName || null, related_event_id: relatedEventId };
+    const relatedEventName = typeof body.related_event_name === "string" ? body.related_event_name.trim() : "";
+    if (relatedEventName.length > 120) throw new RequestError(400, "Related public event must be 120 characters or fewer.");
+    return { ...details, suggester_name: suggesterName || null, related_event_id: relatedEventId, related_event_name: relatedEventName || null };
   }
   const date = typeof body.event_date === "string" ? body.event_date : "";
   if (!/^202[5-7]-(0[1-6]|09|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(date)
@@ -154,7 +156,7 @@ function formDetails(body, isEvent) {
 }
 
 const eventQuery = eventsTable + "?select=id,event_date,name,event_time,description,year_groups,status&order=event_date,sort_order,created_at,id";
-const suggestionQuery = suggestionsTable + "?select=id,name,description,year_groups,suggester_name,related_event_id,created_at&order=created_at.desc,id";
+const suggestionQuery = suggestionsTable + "?select=id,name,description,year_groups,suggester_name,related_event_id,related_event_name,created_at&order=created_at.desc,id";
 const uuidFormat = /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i;
 
 async function logout(request, url) {
