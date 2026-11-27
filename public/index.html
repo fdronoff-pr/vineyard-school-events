@@ -114,11 +114,50 @@
   @media (forced-colors: active) {
     .terms button[aria-pressed="true"], .month[aria-current] { border: 2px solid Highlight; }
   }
+
+  .brand-actions { display: flex; gap: 8px; margin-inline-start: auto; }
+  .action { display: inline-block; border: 1px solid var(--blue); border-radius: 9px; padding: 9px 14px; background: var(--blue); color: white; font: inherit; font-weight: bold; text-decoration: none; text-align: center; }
+  .action-secondary { background: white; color: var(--blue); }
+  .action-outline { background: transparent; color: inherit; border-color: currentColor; }
+  .action-danger { color: #8b2535; border-color: #8b2535; background: transparent; }
+  .action:disabled { opacity: .65; }
+  .action:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #b36b05; outline-offset: 3px; }
+  .workspace { padding-block: 32px 56px; }
+  .workspace[hidden], .layout[hidden], .filters[hidden] { display: none; }
+  .editor { width: min(100%, 680px); margin: 0; }
+  .section-card { padding: clamp(16px, 3vw, 26px); border: 1px solid var(--rule); border-radius: 14px; background: #fffdf8; }
+  .section-card + .section-card { margin-top: 20px; }
+  .section-card h2 { margin: 0 0 14px; font: bold 24px var(--serif); }
+  .fields { display: grid; gap: 15px; }
+  .fields > label { display: grid; gap: 5px; font-weight: bold; }
+  .fields input:not([type=checkbox]), .fields textarea, .fields select { min-width: 0; width: 100%; padding: 9px 10px; border: 1px solid #7387a4; border-radius: 7px; background: white; color: var(--ink); font: inherit; }
+  .fields textarea { resize: vertical; }
+  .groups { margin: 0; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 8px; }
+  .groups legend { font-weight: bold; }
+  .group-options { display: flex; gap: 9px 14px; flex-wrap: wrap; }
+  .group-options label { display: inline-flex; align-items: center; gap: 4px; }
+  .form-actions, .panel-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .panel-heading { justify-content: space-between; margin-bottom: 14px; }
+  .panel-heading h2 { margin: 0; }
+  .admin-list { margin: 0; padding: 0; list-style: none; }
+  .admin-row { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 12px; border-top: 1px solid var(--rule); padding: 12px 0; overflow-wrap: anywhere; }
+  .admin-row p { margin: 4px 0; white-space: pre-wrap; }
+  .feedback { margin: 8px 0; color: var(--muted); }
+  .feedback[data-error] { color: #8b2535; }
+  .event-description { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .event-name { overflow-wrap: anywhere; }
+  @media (max-width: 475px) {
+    .brand-actions { gap: 5px; }
+    .brand-actions .action { padding: 6px 8px; font-size: 12px; }
+    .lockup { gap: 5px; }
+    .crest { width: 46px; }
+    .school-name { font-size: 11px; }
+  }
 </style>
 </head>
 <body>
 <header class="brand">
-  <div class="wrap lockup" aria-label="The Vineyard School">
+  <div class="wrap lockup">
     <div class="crest" aria-hidden="true">
       <svg class="crest-leaf" viewBox="0 0 82 64" aria-hidden="true">
         <defs>
@@ -132,7 +171,8 @@
       </svg>
       V
     </div>
-    <span class="school-name" aria-hidden="true">THE<br>VINEYARD<br>SCHOOL</span>
+    <a class="school-name" href="/events" aria-label="The Vineyard School events calendar" style="color:inherit;text-decoration:none">THE<br>VINEYARD<br>SCHOOL</a>
+    <nav class="brand-actions" aria-label="School Events"><a class="action action-secondary" href="/events/suggest">Suggest event</a><a class="action action-outline" href="/events/login">Login</a></nav>
   </div>
 </header>
 <main>
@@ -184,7 +224,7 @@
       </svg>
     </div>
   </section>
-  <div class="wrap layout">
+  <div class="wrap layout" id="calendar-page">
     <div>
       <nav id="months" class="months" aria-label="Term months"></nav>
       <p id="month-scroll-hint" class="month-scroll-hint" hidden>Scroll for more months <span aria-hidden="true">&harr;</span></p>
@@ -197,196 +237,453 @@
       <noscript><p class="empty">Enable JavaScript to browse the event calendar.</p></noscript>
     </section>
   </div>
+  <section class="wrap workspace" id="suggest-page" hidden>
+    <form id="suggest-form" class="section-card editor fields">
+      <label>Event name <input name="name" required maxlength="120"></label>
+<label>Description <textarea name="description" required maxlength="2000" rows="5"></textarea></label>
+<fieldset class="groups"><legend>Year groups</legend><div class="group-options">
+<label><input type="checkbox" data-all-groups> All classes</label>
+<label><input type="checkbox" name="year_groups" value="YR"> YR</label>
+<label><input type="checkbox" name="year_groups" value="Y1"> Y1</label>
+<label><input type="checkbox" name="year_groups" value="Y2"> Y2</label>
+<label><input type="checkbox" name="year_groups" value="Y3"> Y3</label>
+<label><input type="checkbox" name="year_groups" value="Y4"> Y4</label>
+<label><input type="checkbox" name="year_groups" value="Y5"> Y5</label>
+<label><input type="checkbox" name="year_groups" value="Y6"> Y6</label>
+</div></fieldset>
+      <div class="form-actions"><button type="submit" class="action">Submit suggestion</button></div>
+      <p id="suggest-feedback" class="feedback" role="status" hidden></p>
+    </form>
+  </section>
+  <section class="wrap workspace" id="login-page" hidden>
+    <div class="section-card editor">
+      <h2>Sign in to manage school events</h2>
+      <p id="login-feedback" class="feedback" role="status" hidden></p>
+      <a class="action" href="/?view=auth&amp;events=admin">Continue with Google</a>
+    </div>
+  </section>
+  <section class="wrap workspace" id="admin-page" hidden>
+    <p id="admin-feedback" class="feedback" role="status"></p>
+    <section class="section-card" id="event-editor" aria-labelledby="editor-title" hidden>
+      <h2 id="editor-title" tabindex="-1">Add an event</h2>
+      <form id="event-form" class="fields">
+        <label>Event name <input name="name" required maxlength="120"></label>
+<label>Description (optional) <textarea name="description" maxlength="2000" rows="5"></textarea></label>
+<fieldset class="groups"><legend>Year groups</legend><div class="group-options">
+<label><input type="checkbox" data-all-groups> All classes</label>
+<label><input type="checkbox" name="year_groups" value="YR"> YR</label>
+<label><input type="checkbox" name="year_groups" value="Y1"> Y1</label>
+<label><input type="checkbox" name="year_groups" value="Y2"> Y2</label>
+<label><input type="checkbox" name="year_groups" value="Y3"> Y3</label>
+<label><input type="checkbox" name="year_groups" value="Y4"> Y4</label>
+<label><input type="checkbox" name="year_groups" value="Y5"> Y5</label>
+<label><input type="checkbox" name="year_groups" value="Y6"> Y6</label>
+</div></fieldset>
+        <label>Date <input type="date" name="event_date" required min="2025-01-01" max="2027-12-31"></label>
+        <label>Time (optional) <input name="event_time" maxlength="80" placeholder="For example, 3:15–4:30pm"></label>
+        <label>Status <select name="status"><option value="confirmed">Confirmed</option><option value="planned">Planned</option></select></label>
+        <div class="form-actions">
+          <button type="submit" class="action">Create event</button>
+          <button type="button" id="cancel-editor" class="action action-secondary">Cancel</button>
+        </div>
+        <p id="editor-feedback" class="feedback" role="status" hidden></p>
+      </form>
+    </section>
+    <section class="section-card" aria-labelledby="published-title">
+      <div class="panel-heading"><h2 id="published-title">Calendar events</h2><button type="button" id="add-event" class="action">Add event</button></div>
+      <ul id="admin-events" class="admin-list"></ul>
+    </section>
+    <section class="section-card" aria-labelledby="suggestions-title">
+      <h2 id="suggestions-title">Suggested events</h2>
+      <ul id="admin-suggestions" class="admin-list"></ul>
+    </section>
+  </section>
 </main>
 <script>
 
   'use strict';
 
-  // Dates are ISO calendar dates. Times are displayed in school-local time.
-  // Event data comes from the supplied autumn list and Christmas calendar.
-  const data = [
-    ['2026-09-11', 'Stay and play, ice cream van', '3:15–4:30pm'],
-    ['2026-10-01', 'Who’s behind the mask inflatable run', '4:30–5:15pm'],
-    ['2026-10-16', 'Pyjama Day'],
-    ['2026-11-03', 'Firework Night at The Vineyard', '5–7pm'],
-    ['2026-11-13', 'Year 3 & 4 disco', '3:15–4:15pm'],
-    ['2026-11-20', 'Odd Socks Day'],
-    ['2026-11-23', 'Winter Kindness Donations Open'],
-    ['2026-11-25', 'Year 2 disco', '3–4pm'],
-    ['2026-11-25', 'Year 5 disco', '4:15–5:15pm'],
-    ['2026-11-26', 'Christmas Wreath-Making Masterclass', '7pm'],
-    ['2026-11-29', 'Christmas Trees & Puddings Collection', '10am–2pm'],
-    ['2026-11-30', 'Bring in labelled Santa hats'],
-    ['2026-12-02', 'Winter Kindness Workshop', '3:15–4:15pm'],
-    ['2026-12-04', 'Christmas Shoeboxes & Thank You Biscuits Deadline', '9am'],
-    ['2026-12-07', 'Silent Auction Starts'],
-    ['2026-12-08', 'Christmas Concert: Year 6 & Emerald Class', '9:30–10:30am'],
-    ['2026-12-08', 'Christmas Concert: Year 5 & Ruby Class', '11am–12pm'],
-    ['2026-12-08', 'Christmas Concert: Year 4 & Sapphire Class', '2–3pm'],
-    ['2026-12-09', 'KS1 Christmas Concert: Year 2 families', '9:30–10:30am'],
-    ['2026-12-10', 'KS1 Christmas Concert: Year 1 families', '2–3pm'],
-    ['2026-12-10', 'Christmas Community Evening', '6–8pm'],
-    ['2026-12-11', 'Opal Christmas Nativity', '9:30–10:30am'],
-    ['2026-12-11', 'Gems Christmas Afternoon', '2:30pm'],
-    ['2026-12-13', 'Christmas Collection Pot Deadline'],
-    ['2026-12-14', 'Elfridges Donations Deadline', '', 'New and unused gifts'],
-    ['2026-12-15', 'Silent Auction Closes'],
-    ['2026-12-17', 'Christmas Celebration Day', '', 'Santa visits Reception, KS1 and Gems. Elfridges for Years 3–5, Christmas lunch, Christmas jumpers and Year 6 elf dress-up.'],
-    ['2026-12-18', 'End of Term: Early Finish', '1:30pm']
-  ];
-  const eventsByMonth = new Map();
-  for (const [date, name, time, note, status = 'confirmed'] of data) {
-    const key = date.slice(0, 7);
-    if (!eventsByMonth.has(key)) eventsByMonth.set(key, []);
-    eventsByMonth.get(key).push({ date, name, time, note, status });
+  const path = location.pathname.replace(/\/$/, "");
+  const mode = { "/events/suggest": "suggest", "/events/login": "login", "/events/admin": "admin" }[path];
+  if (mode) {
+    const heading = { suggest: "Suggest an event", login: "Admin login", admin: "Manage events" }[mode];
+    document.title = heading + " | Vineyard School Events";
+    document.querySelector("#title").textContent = heading;
+    document.querySelector(".intro").hidden = true;
+    document.querySelector(".filters").hidden = true;
+    document.querySelector("#calendar-page").hidden = true;
+    document.querySelector("#" + mode + "-page").hidden = false;
+    setupWorkspace(mode);
+  } else {
+    setupCalendar();
   }
 
-  const yearPicker = document.querySelector('#year');
-  const monthNav = document.querySelector('#months');
-  const monthScrollHint = document.querySelector('#month-scroll-hint');
-  const title = document.querySelector('#month-title');
-  const summary = document.querySelector('#summary');
-  const eventsPanel = document.querySelector('#events');
-  const termButtons = [...document.querySelectorAll('[data-term]')];
-  const monthNumber = (month) => String(month).padStart(2, '0');
-  const monthKey = (year, month) => year + '-' + monthNumber(month);
-  const termViewOf = (month) => month >= 9 ? 2 : 1;
-  const makeFormatter = (options) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', ...options });
-  const monthFormatter = makeFormatter({ month: 'long' });
-  const weekdayFormatter = makeFormatter({ weekday: 'short' });
-  const fullDateFormatter = makeFormatter({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const weekFormatter = makeFormatter({ day: 'numeric', month: 'short' });
-  const monthName = (month) => monthFormatter.format(new Date(Date.UTC(2026, month - 1, 1)));
-  const monthEvents = (year, month) => eventsByMonth.get(monthKey(year, month)) ?? [];
-  const termMonths = { 1: [1, 2, 3, 4, 5, 6], 2: [9, 10, 11, 12] };
-  let year = 2026;
-  let month = 11;
-  const lastMonth = { 1: 1, 2: 11 };
-
-  function element(tag, className, value) {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (value !== undefined) node.textContent = value;
-    return node;
+  async function eventsApi(path, options = {}) {
+    const response = await fetch("/events/api/" + path, {
+      ...options,
+      ...(options.body ? { headers: { "Content-Type": "application/json" } } : {}),
+    });
+    if (response.status === 204) return null;
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Please try again.");
+    return data;
   }
 
-  function readLocation() {
-    const match = /^#(202[5-7])-(0[1-9]|1[0-2])$/.exec(location.hash);
-    year = match ? Number(match[1]) : 2026;
-    month = match ? Number(match[2]) : 11;
-    if (month === 7 || month === 8) {
-      month = 6;
-      history.replaceState(null, '', '#' + monthKey(year, month));
+  function setupCalendar() {
+    const eventsByMonth = new Map();
+
+    const yearPicker = document.querySelector('#year');
+    const monthNav = document.querySelector('#months');
+    const monthScrollHint = document.querySelector('#month-scroll-hint');
+    const title = document.querySelector('#month-title');
+    const summary = document.querySelector('#summary');
+    const eventsPanel = document.querySelector('#events');
+    const termButtons = [...document.querySelectorAll('[data-term]')];
+    const monthNumber = (month) => String(month).padStart(2, '0');
+    const monthKey = (year, month) => year + '-' + monthNumber(month);
+    const termViewOf = (month) => month >= 9 ? 2 : 1;
+    const makeFormatter = (options) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', ...options });
+    const monthFormatter = makeFormatter({ month: 'long' });
+    const weekdayFormatter = makeFormatter({ weekday: 'short' });
+    const fullDateFormatter = makeFormatter({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const weekFormatter = makeFormatter({ day: 'numeric', month: 'short' });
+    const monthName = (month) => monthFormatter.format(new Date(Date.UTC(2026, month - 1, 1)));
+    const monthEvents = (year, month) => eventsByMonth.get(monthKey(year, month)) ?? [];
+    const termMonths = { 1: [1, 2, 3, 4, 5, 6], 2: [9, 10, 11, 12] };
+    let year = 2026;
+    let month = 11;
+    const lastMonth = { 1: 1, 2: 11 };
+
+    function element(tag, className, value) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (value !== undefined) node.textContent = value;
+      return node;
     }
-    lastMonth[termViewOf(month)] = month;
-  }
 
-  function selectMonth(nextYear, nextMonth) {
-    if (nextYear === year && nextMonth === month) return;
-    const rebuildNav = nextYear !== year || termViewOf(nextMonth) !== termViewOf(month);
-    year = nextYear;
-    month = nextMonth;
-    lastMonth[termViewOf(month)] = month;
-    history.pushState(null, '', '#' + monthKey(year, month));
-    render(rebuildNav);
-  }
+    function readLocation() {
+      const match = /^#(202[5-7])-(0[1-9]|1[0-2])$/.exec(location.hash);
+      year = match ? Number(match[1]) : 2026;
+      month = match ? Number(match[2]) : 11;
+      if (month === 7 || month === 8) {
+        month = 6;
+        history.replaceState(null, '', '#' + monthKey(year, month));
+      }
+      lastMonth[termViewOf(month)] = month;
+    }
 
-  function renderMonthButtons(months) {
-    monthNav.replaceChildren(...months.map((number) => {
-      const button = element('button', 'month');
-      const count = monthEvents(year, number).length;
-      button.type = 'button';
-      button.dataset.month = number;
-      button.setAttribute('aria-controls', 'events');
-      button.append(element('span', 'month-name', monthName(number)));
-      button.append(element('span', 'month-count', count + (count === 1 ? ' event' : ' events')));
-      button.addEventListener('click', () => selectMonth(year, number));
-      return button;
-    }));
-  }
+    function selectMonth(nextYear, nextMonth) {
+      if (nextYear === year && nextMonth === month) return;
+      const rebuildNav = nextYear !== year || termViewOf(nextMonth) !== termViewOf(month);
+      year = nextYear;
+      month = nextMonth;
+      lastMonth[termViewOf(month)] = month;
+      history.pushState(null, '', '#' + monthKey(year, month));
+      render(rebuildNav);
+    }
 
-  function renderEvent(event, date) {
-    const row = element('li', 'event');
-    const badge = element('time', 'date');
-    badge.dateTime = event.date;
-    badge.setAttribute('aria-label', fullDateFormatter.format(date));
-    badge.append(element('span', 'weekday', weekdayFormatter.format(date)), element('span', 'day', date.getUTCDate()));
-    const details = element('div');
-    const name = element('div', 'event-name', event.name);
-    if (event.status === 'planned') name.append(element('span', 'status', 'Planned'));
-    details.append(name);
-    if (event.time) details.append(element('div', 'event-time', event.time));
-    if (event.note) details.append(element('div', 'event-time', event.note));
-    row.append(badge, details);
-    return row;
-  }
+    function renderMonthButtons(months) {
+      monthNav.replaceChildren(...months.map((number) => {
+        const button = element('button', 'month');
+        const count = monthEvents(year, number).length;
+        button.type = 'button';
+        button.dataset.month = number;
+        button.setAttribute('aria-controls', 'events');
+        button.append(element('span', 'month-name', monthName(number)));
+        button.append(element('span', 'month-count', count + (count === 1 ? ' event' : ' events')));
+        button.addEventListener('click', () => selectMonth(year, number));
+        return button;
+      }));
+    }
 
-  function renderAgenda() {
-    const selectedEvents = monthEvents(year, month);
-    const confirmed = selectedEvents.filter((event) => event.status === 'confirmed').length;
+    function renderEvent(event, date) {
+      const row = element('li', 'event');
+      const badge = element('time', 'date');
+      badge.dateTime = event.date;
+      badge.setAttribute('aria-label', fullDateFormatter.format(date));
+      badge.append(element('span', 'weekday', weekdayFormatter.format(date)), element('span', 'day', date.getUTCDate()));
+      const details = element('div');
+      const name = element('div', 'event-name', event.name);
+      if (event.status === 'planned') name.append(element('span', 'status', 'Planned'));
+      details.append(name);
+      if (event.time) details.append(element('div', 'event-time', event.time));
+      if (event.note) details.append(element('div', 'event-description', event.note));
+      if (event.groups?.length) details.append(element('div', 'event-time', groupLabel(event.groups)));
+      row.append(badge, details);
+      return row;
+    }
+
+    function renderAgenda() {
+      const selectedEvents = monthEvents(year, month);
+      const confirmed = selectedEvents.filter((event) => event.status === 'confirmed').length;
+      title.textContent = monthName(month);
+      summary.textContent = confirmed + ' confirmed · ' + (selectedEvents.length - confirmed) + ' planned';
+      if (!selectedEvents.length) {
+        eventsPanel.replaceChildren(element('p', 'empty', 'No events listed for ' + monthName(month) + ' ' + year + '.'));
+        return;
+      }
+
+      const weeks = document.createDocumentFragment();
+      let previousWeek = '';
+      let list;
+      for (const event of selectedEvents) {
+        const date = new Date(event.date + 'T00:00:00Z');
+        const monday = new Date(date);
+        monday.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+        const weekKey = monday.toISOString();
+        if (weekKey !== previousWeek) {
+          const week = element('section');
+          const heading = element('h3', 'week', 'Week of ' + weekFormatter.format(monday));
+          list = element('ul', 'event-list');
+          week.append(heading, list);
+          weeks.append(week);
+          previousWeek = weekKey;
+        }
+        list.append(renderEvent(event, date));
+      }
+      eventsPanel.replaceChildren(weeks);
+    }
+
+    function updateScrollHint() {
+      const overflows = monthNav.scrollWidth > monthNav.clientWidth;
+      monthScrollHint.hidden = !overflows;
+      if (overflows) monthNav.setAttribute('aria-describedby', monthScrollHint.id);
+      else monthNav.removeAttribute('aria-describedby');
+    }
+
+    function render(rebuildNav = true) {
+      yearPicker.value = year;
+      for (const button of termButtons) {
+        button.setAttribute('aria-pressed', String(Number(button.dataset.term) === termViewOf(month)));
+      }
+      if (rebuildNav) renderMonthButtons(termMonths[termViewOf(month)]);
+      for (const button of monthNav.querySelectorAll('button')) {
+        if (Number(button.dataset.month) === month) button.setAttribute('aria-current', 'date');
+        else button.removeAttribute('aria-current');
+      }
+      renderAgenda();
+      updateScrollHint();
+    }
+
+    new ResizeObserver(updateScrollHint).observe(monthNav);
+    yearPicker.addEventListener('pointerdown', () => yearPicker.setAttribute('data-pointer-focus', ''));
+    yearPicker.addEventListener('blur', () => yearPicker.removeAttribute('data-pointer-focus'));
+    yearPicker.addEventListener('keydown', () => yearPicker.removeAttribute('data-pointer-focus'));
+    yearPicker.addEventListener('change', () => selectMonth(Number(yearPicker.value), month));
+    for (const button of termButtons) {
+      button.addEventListener('click', () => selectMonth(year, lastMonth[Number(button.dataset.term)]));
+    }
+    window.addEventListener('hashchange', () => {
+      readLocation();
+      render();
+    });
+    readLocation();
     title.textContent = monthName(month);
-    summary.textContent = confirmed + ' confirmed · ' + (selectedEvents.length - confirmed) + ' planned';
-    if (!selectedEvents.length) {
-      eventsPanel.replaceChildren(element('p', 'empty', 'No events listed for ' + monthName(month) + ' ' + year + '.'));
+    eventsPanel.replaceChildren(element('p', 'empty', 'Loading events…'));
+    eventsApi("events").then(records => {
+      for (const record of records) {
+        const key = record.event_date.slice(0, 7);
+        if (!eventsByMonth.has(key)) eventsByMonth.set(key, []);
+        eventsByMonth.get(key).push({
+          date: record.event_date, name: record.name, time: record.event_time,
+          note: record.description, groups: record.year_groups, status: record.status,
+        });
+      }
+      render();
+    }).catch(error => eventsPanel.replaceChildren(element("p", "empty", error.message)));
+  }
+
+  function groupLabel(groups) {
+    return groups.length === 7 ? "All classes" : groups.join(", ");
+  }
+
+  function feedback(element, message, error = false) {
+    element.textContent = message;
+    element.hidden = !message;
+    element.toggleAttribute("data-error", error);
+  }
+
+  function groupControls(form) {
+    const all = form.querySelector("[data-all-groups]");
+    const choices = [...form.querySelectorAll('[name="year_groups"]')];
+    function sync() {
+      const count = choices.filter(input => input.checked).length;
+      all.checked = count === choices.length;
+      all.indeterminate = count > 0 && count < choices.length;
+    }
+    all.addEventListener("change", () => {
+      for (const input of choices) input.checked = all.checked;
+      sync();
+    });
+    for (const input of choices) input.addEventListener("change", sync);
+    return sync;
+  }
+
+  function formPayload(form) {
+    const data = new FormData(form);
+    return { ...Object.fromEntries(data), year_groups: data.getAll("year_groups") };
+  }
+
+  function setupWorkspace(mode) {
+    if (mode === "login") {
+      const state = new URLSearchParams(location.search).get("access");
+      if (state) feedback(document.querySelector("#login-feedback"), state === "denied"
+        ? "Use the authorised administrator’s Google account to sign in."
+        : "Google sign-in could not be completed. Please try again.", true);
       return;
     }
-
-    const weeks = document.createDocumentFragment();
-    let previousWeek = '';
-    let list;
-    for (const event of selectedEvents) {
-      const date = new Date(event.date + 'T00:00:00Z');
-      const monday = new Date(date);
-      monday.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
-      const weekKey = monday.toISOString();
-      if (weekKey !== previousWeek) {
-        const week = element('section');
-        const heading = element('h3', 'week', 'Week of ' + weekFormatter.format(monday));
-        list = element('ul', 'event-list');
-        week.append(heading, list);
-        weeks.append(week);
-        previousWeek = weekKey;
+    if (mode === "admin") {
+      setupAdmin();
+      return;
+    }
+    const form = document.querySelector("#suggest-form");
+    const output = document.querySelector("#suggest-feedback");
+    const sync = groupControls(form);
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const details = formPayload(form);
+      if (!details.year_groups.length) {
+        feedback(output, "Select at least one year group.", true);
+        form.querySelector("[data-all-groups]").focus();
+        return;
       }
-      list.append(renderEvent(event, date));
-    }
-    eventsPanel.replaceChildren(weeks);
+      const submit = form.querySelector('[type="submit"]');
+      submit.disabled = true;
+      try {
+        await eventsApi("suggestions", { method: "POST", body: JSON.stringify(details) });
+        form.reset();
+        sync();
+        feedback(output, "Thanks. Your suggestion has been submitted for review.");
+      } catch (error) {
+        feedback(output, error.message, true);
+      } finally {
+        submit.disabled = false;
+      }
+    });
   }
 
-  function updateScrollHint() {
-    const overflows = monthNav.scrollWidth > monthNav.clientWidth;
-    monthScrollHint.hidden = !overflows;
-    if (overflows) monthNav.setAttribute('aria-describedby', monthScrollHint.id);
-    else monthNav.removeAttribute('aria-describedby');
-  }
+  function setupAdmin() {
+    const editor = document.querySelector("#event-editor");
+    const form = document.querySelector("#event-form");
+    const title = document.querySelector("#editor-title");
+    const addButton = document.querySelector("#add-event");
+    const listFeedback = document.querySelector("#admin-feedback");
+    const editorFeedback = document.querySelector("#editor-feedback");
+    const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
+    const sync = groupControls(form);
+    let selectedSuggestion = null;
 
-  function render(rebuildNav = true) {
-    yearPicker.value = year;
-    for (const button of termButtons) {
-      button.setAttribute('aria-pressed', String(Number(button.dataset.term) === termViewOf(month)));
+    function openEditor(suggestion = null) {
+      form.reset();
+      feedback(editorFeedback, "");
+      selectedSuggestion = suggestion;
+      title.textContent = suggestion ? "Create event from suggestion" : "Add an event";
+      if (suggestion) {
+        form.elements.name.value = suggestion.name;
+        form.elements.description.value = suggestion.description;
+        for (const input of form.elements.year_groups) input.checked = suggestion.year_groups.includes(input.value);
+      }
+      sync();
+      editor.hidden = false;
+      title.focus();
     }
-    if (rebuildNav) renderMonthButtons(termMonths[termViewOf(month)]);
-    for (const button of monthNav.querySelectorAll('button')) {
-      if (Number(button.dataset.month) === month) button.setAttribute('aria-current', 'date');
-      else button.removeAttribute('aria-current');
-    }
-    renderAgenda();
-    updateScrollHint();
-  }
 
-  new ResizeObserver(updateScrollHint).observe(monthNav);
-  yearPicker.addEventListener('pointerdown', () => yearPicker.setAttribute('data-pointer-focus', ''));
-  yearPicker.addEventListener('blur', () => yearPicker.removeAttribute('data-pointer-focus'));
-  yearPicker.addEventListener('keydown', () => yearPicker.removeAttribute('data-pointer-focus'));
-  yearPicker.addEventListener('change', () => selectMonth(Number(yearPicker.value), month));
-  for (const button of termButtons) {
-    button.addEventListener('click', () => selectMonth(year, lastMonth[Number(button.dataset.term)]));
+    function closeEditor() {
+      editor.hidden = true;
+      selectedSuggestion = null;
+      addButton.focus();
+    }
+
+    function adminRow(record, type) {
+      const row = document.createElement("li");
+      row.className = "admin-row";
+      const details = document.createElement("div");
+      const name = document.createElement("strong");
+      name.textContent = record.name;
+      details.append(name);
+      const parts = [
+        record.event_date ? dateFormat.format(new Date(record.event_date + "T00:00:00Z")) : "Suggested " + dateFormat.format(new Date(record.created_at)),
+        record.event_time,
+        record.status === "planned" ? "Planned" : record.status === "confirmed" ? "Confirmed" : "",
+        groupLabel(record.year_groups),
+      ].filter(Boolean);
+      const meta = document.createElement("p");
+      meta.textContent = parts.join(" · ");
+      details.append(meta);
+      if (record.description) {
+        const description = document.createElement("p");
+        description.textContent = record.description;
+        details.append(description);
+      }
+      const actions = document.createElement("div");
+      actions.className = "form-actions";
+      if (type === "suggestions") {
+        const create = document.createElement("button");
+        create.type = "button";
+        create.className = "action";
+        create.textContent = "Create event";
+        create.addEventListener("click", () => openEditor(record));
+        actions.append(create);
+      }
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "action action-danger";
+      remove.textContent = "Remove";
+      remove.setAttribute("aria-label", "Remove " + record.name);
+      remove.addEventListener("click", async () => {
+        if (!window.confirm("Remove “" + record.name + "”?")) return;
+        remove.disabled = true;
+        try {
+          await eventsApi("admin/" + type + "/" + record.id, { method: "DELETE" });
+          if (selectedSuggestion?.id === record.id) closeEditor();
+          await loadLists(type === "events" ? "Event removed." : "Suggestion removed.");
+        } catch (error) {
+          feedback(listFeedback, error.message, true);
+        } finally {
+          remove.disabled = false;
+        }
+      });
+      actions.append(remove);
+      row.append(details, actions);
+      return row;
+    }
+
+    async function loadLists(message = "") {
+      try {
+        const data = await eventsApi("admin");
+        for (const [type, list] of [["events", data.events], ["suggestions", data.suggestions]]) {
+          const target = document.querySelector("#admin-" + type);
+          const empty = document.createElement("li");
+          empty.textContent = type === "events" ? "No calendar events." : "No suggestions awaiting review.";
+          target.replaceChildren(...(list.length ? list.map(record => adminRow(record, type)) : [empty]));
+        }
+        feedback(listFeedback, message);
+      } catch (error) {
+        feedback(listFeedback, error.message, true);
+      }
+    }
+
+    addButton.addEventListener("click", () => openEditor());
+    document.querySelector("#cancel-editor").addEventListener("click", closeEditor);
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const details = formPayload(form);
+      if (selectedSuggestion) details.suggestion_id = selectedSuggestion.id;
+      const submit = form.querySelector('[type="submit"]');
+      submit.disabled = true;
+      try {
+        await eventsApi("admin/events", { method: "POST", body: JSON.stringify(details) });
+        closeEditor();
+        await loadLists("Event created and added to the calendar.");
+      } catch (error) {
+        feedback(editorFeedback, error.message, true);
+      } finally {
+        submit.disabled = false;
+      }
+    });
+    feedback(listFeedback, "Loading events and suggestions…");
+    void loadLists();
   }
-  window.addEventListener('hashchange', () => {
-    readLocation();
-    render();
-  });
-  readLocation();
-  render();
 </script>
 </body>
 </html>
